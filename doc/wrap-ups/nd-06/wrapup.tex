@@ -1,0 +1,134 @@
+\documentclass[a4paper,11pt,oneside]{article} 
+ 
+\usepackage{parskip}                %% blank lines between paragraphs, no indent 
+\usepackage[pdftex]{graphicx}        %% include graphics, preferably pdf 
+\usepackage[pdftex]{hyperref}        %% many PDF options can be set here 
+\usepackage{graphicx}    % needed for including graphics e.g. EPS, PS 
+\usepackage {amssymb} 
+\usepackage{hyperref} 
+
+\newenvironment{mylisting}
+{\begin{list}{}{\setlength{\leftmargin}{1em}}\item\footnotesize\bfseries}
+{\end{list}}
+
+\newenvironment{mytinylisting}
+{\begin{list}{}{\setlength{\leftmargin}{1em}}\item\tiny\bfseries}
+{\end{list}}
+
+\title{6LoWPAN Neighbor Discovery}
+ 
+\begin{document} 
+\maketitle
+\section{Summary}
+\subsection{Questions}
+\begin{itemize}
+\item NC is sent by an ER as unicast, but there are no details what happens for the first time when the source address of the NR message is set to unspecified address.
+\end{itemize}
+
+\subsection{Recap: IPv6 ND bootstrapping}
+\begin{itemize}
+\item a node joins the solicited-node multicast address on the interface and then performs duplicate address detection (DAD) for the acquired link-local address by sending a solicited-node multicast message to the link;
+\item after that the node sends multicast messages to the all-router address to solicit router advertisements;
+\item once the host receives a valid router advertisement, it autoconfigures the IPv6 address with the advertised prefix in the router advertisement (RA);
+\item the IPv6 routers usually send router advertisements periodically on the network to the all-node multicast address;
+\item nodes send Neighbor Solicitation/Neighbor Advertisement messages to resolve the IPv6 address of the
+destination on the link. These NS/NA messages are also often multicast messages;
+\end{itemize}
+
+\subsection{Terminology}
+\begin{itemize}
+\item Optimistic address -- an address that is assigned to an interface and available for use, subject to restrictions, while its uniqueness on a link is being verified. 
+\item LoWPAN Edge Router -- an IPv6 router that interconnects the LoWPAN to another IP network.
+\item Binding -- the association of the LoWPAN node IPv6 address and Owner Interface ID with associated Whiteboard and ND states including the remaining lifetime of that association.
+\item Whiteboard -- a conceptual data structure which may be supported by Edge Routers.  The Whiteboard is used for      performing Duplicate Address Detection (DAD) and Neighbor Unreachability Detection (NUD) across the entire 	LoWPAN.  The Whiteboard contains bindings for LoWPAN nodes that contain, among others, an Owner Interface Identifier, Owner Nonce, IPv6 address, TID and a remaining lifetime of the binding.
+\end{itemize}
+
+\subsection{6LoWPAN ND Goals:}
+\begin{itemize}
+\item enables ND operations over an entire LoWPAN, even with non-transitive links and over multihop IP hops;
+\item the efficient detection of duplicate addresses over entire LoWPANs;
+\item optimizes ND operations for LoWPANs - minimize signalling by avoiding the use of multicast flooding and reducing the frequency of link scope multicast for ND messages inside the LoWPANs;
+\item disseminate context information throughout the LoWPAN;
+\item (??? What is it?) provides a mechanism for claim and defend addressing;
+\end{itemize}
+
+\subsection{6LoWPAN ND Assumptions:}
+\begin{itemize}
+\item link-local IPv6 addresses are derived from a unique identifier (e.g.  EUI-64);
+\item there is typically a direct mapping between the IPv6 address IID and the link-layer address, thus address resolution is not normally required;
+
+\end{itemize}
+
+\section{6LoWPAN Neighbor Discovery}
+
+IPv6 Neighbor Discovery (ND) \cite{rfc4861} provides several important functions such as Router Discovery, Address Resolution, Duplicate Address Detection, Redirect, Prefix and Parameter Discovery.
+
+However, standard IPv6 Neighbor Discovery \cite{rfc4861}  has several problems when using it with 6LoWPAN.
+LoWPAN links are non-transitive in their nature (A can reach B, and B can reach C, but A can't reach C), but
+IPv6 ND was not designed for non-transitive wireless links. 
+LoWPAN does not provide multicast capability at the link-layer, thus simulating multicast behavior by both using broadcast or sending a number of unicast messages, both expensive for the low-powered network and the low-processing capable nodes. Therefor multicast is not desirable in such a low-power, lossy wireless network (unnecessary waste of energy in LoWPANs), whereas IPv6 ND heavily uses it. 
+
+As a result, it was concluded that standard Neighbor Discovery is not suitable for LoWPANs as it is and a 6LoWPAN-specific ND definition would be useful. In 6LoWPAN Neighbor Discovery Internet Draft \cite{draft-nd-06} a new ND mechanism has been proposed which takes into account the characteristics of low-power, lossy wireless links. 6LoWPAN ND provides additions and optimizations to IPv6 ND specifically supporting 6LoWPAN.
+
+\subsection{Bootstrapping}
+Bootstrapping of a LoWPAN node consists of the following steps:
+
+\begin{itemize}
+\item A host first performs stateless address autoconfiguration of its link-local unicast address for each LoWPAN interface from its EUI-64. In order to join a LoWPAN, a node should listen for Route Advertisements (RA) from Edge Routers or LoWPAN Routers, or broadcast a Router Solicitation (RS) and receive RA responses from local routers. If a valid prefix is advertised in the RA, the host will also form an optimistic global unique address with stateless address autoconfiguration.
+
+\item Next the node will attempt to perform initial registration with an Edge Router. Registration is performed by sending a unicast Node Registration (NR) message to a link-local Edge Router  or router. The NR contains the addresses the node wants to register.
+
+\item The Edge Router replies with a Node Confirmation(NC) either  directly or through the relaying router. Routers only exist in Route Over configurations, and in pure Mesh Under configurations nodes are always within link-local scope of an Edge Router. The NC includes the set of addresses now confirmed to be bound to the Whiteboard of the ER.  The Host is now capable of using the LoWPAN fully, and the ER forwards on its behalf.
+\end{itemize}
+
+Once the bootstrapping has been accomplished the node may send packets to any IPv6 address inside or outside the LoWPAN. Address resolution is not required to be performed with neighbors, but instead the Interface Identifier (IID) part of the IPv6 address directly corresponds to a MAC address.  Neighbor Solicitation/Neighbor Advertisement (NS/NA) messages are not used.
+
+The Whiteboard address bindings and assignments are soft, and thus must be renewed periodically as indicated by the lifetime of the binding.  This is achieved by periodically sending a new NR to the` ER.
+
+\subsection{6LoWPAN-ND Messages}
+6LoWPAN-ND  messages are all ICMPv6 \cite{rfc4443} messages and extend the capabilities of "The IPv6 Neighbor Discovery Protocol" \cite{rfc4861}.
+
+\subsubsection{Node Registration/Confirmation Message}
+The Node Registration (NR) and Node Confirmation (NC) messages are used by a node to register with an ER, and for the ER to confirm the binding. The Node Registration message is sent by the LoWPAN Node to the link-local unicast IPv6 address of an local Edge Router or LoWPAN Router. NR/NC messages may be sent over multiple IP hops within the LoWPAN by relaying routers. When relaying, a new message is created with an updated checksum, and a code is used to indicate relaying.  
+
+Address Options are included in the NR message for each IPv6 address to be registered, and included in the corresponding NC to indicate success. These options are also used for dissemination of context information when stateful compression of the IPv6 headers is used.
+
+\subsubsection{Router Solicitation/Router Advertisement Message}
+The Router Solicitation and Router Advertisement message formats are identical to to the RS and RA
+message formats defined in RFC 4861 \cite{rfc4861}. The use of some flags is however defined in the 6LoWPAN context, and several additional new options are identified. RA messages are sent either to link-local all-nodes multicast, or to a link-local unicast address as a response to an RS.
+
+\subsection{LoWPAN Node}
+Instead of relying on multicast ND messages for DAD and neighbor unreachability detection, LoWPAN Nodes send unicast messages to an Edge Router in the LoWPAN which keeps a Whiteboard of all bound addresses from nodes attached to that ER. These functions are performed across the entire LoWPAN using the Whiteboard and it allows 6LoWPAN-ND to operate over asymmetric, non-transitive links and with sleeping nodes. Node complexity and energy
+consumption are reduced as address resolution and the support of redirect are not required, ND traffic is reduced and nodes do not exchange NS/NA messages.  
+
+A LoWPAN node makes use of a few conceptual structures and variables, some of which are the following: 
+\begin{itemize}
+\item Prefix List  - the list of prefixes which are advertised in Router Advertisements;
+\item Context List  - the list of context and their associated CID which are advertised in Router Advertisements;
+\item Edge Router List  - the list of Edge Routers the node is registered with;
+\end{itemize}
+
+\subsection{LoWPAN Router}
+LoWPAN Routers are used in a route over configuration where the network is composed of overlapping link-local scopes. As a result, the standard IPv6 ND defined in RFC4861 \cite{rfc4861} is extended to operate over such non-transitive LoWPAN links. 
+
+Network configuration parameters carried in Router Advertisements originated at edge routers and must disseminate to all routers and hosts within the LoWPAN. Every LoWPAN Router also serves as a relay for Node Registration/Confirmation messages between nodes and ERs separated by multiple IP hops.
+
+\subsection{LoWPAN Edge Router}
+Edge Routers are the routers that connect LoWPANs to an IPv6 infrastructure via backhaul or backbone links. Edge Routers support Whiteboard registration for LoWPAN Nodes within their subnets which contains the following fields for every registered node:
+\begin{itemize}
+\item IPv6 address --  the IPv6 address being registered.
+\item Owner Interface Identifier -- the 64-bit OII of the LoWPAN Node's interface.
+\item Owner Nonce -- the 32-bit nonce generated by a node upon booting is used for Duplicate OII detection.
+\item Registration Age and Lifetime -- the registration age indicates how long ago the last registration flow took place.  When the age reaches the registration lifetime, the whiteboard entry is removed.
+\end{itemize}
+
+
+
+\nocite{rfc4443} 
+\nocite{rfc4861} 
+\nocite{draft-nd-06} 
+ 
+\bibliographystyle{plain} 
+\bibliography{wrapup} 
+\end{document} 
+ 

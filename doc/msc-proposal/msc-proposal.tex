@@ -1,0 +1,101 @@
+\documentclass[12pt, titlepage, a4paper]{report}
+% For printed document - always starts a new chapter on the right-side page (leaves blank pages):
+%\documentclass[12pt, titlepage, a4paper, openright, twoside]{report}
+
+%% Needed packages:
+\usepackage{pdfpages} 		% used for introducing the title PDF page
+%\usepackage{a4wide}		% spreads text over the whole width of the page
+\usepackage[utf8x]{inputenc}	% encoding
+\usepackage[english]{babel}	% multilingual typesetting
+\usepackage{graphicx}		% adds graphics
+\usepackage[pdftex]{hyperref}	% hyper-refs inside the doc
+\usepackage{url}		% formats urls
+\usepackage{cite}		% citations from bibtex
+\usepackage{makeidx}		% index
+\usepackage{robustindex}	% index
+
+%% Add/remove packages here:
+\usepackage{ucs}
+\usepackage{parskip}
+\usepackage{wrapfig}
+\usepackage{array}
+\usepackage{rotating}
+\usepackage{alltt}
+\usepackage{latexsym}
+\usepackage{amsmath, amsthm, amssymb}
+\usepackage{setspace} 
+%\usepackage[hide]{ed}
+\usepackage{color}
+\usepackage{listings}
+\lstset{float=htb,columns=fullflexible,frame=lines,basicstyle=\scriptsize, language=XML,
+        numbers=left,stepnumber=5,numberstyle=\tiny,showstringspaces=false}
+
+\pagestyle{headings}
+\makeindex    % obligatory with robustindex
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Document
+\begin{document}
+
+\begin{titlepage}
+\includepdf[pages=1]{title}
+\thispagestyle{empty}
+\end{titlepage}
+
+%% Acknowledgements page
+\newpage
+\thispagestyle{empty}
+
+%% Abstract page
+\newpage
+\begin{abstract}
+Abstract
+\end{abstract}
+
+\newpage
+\tableofcontents
+%\listoffigures 
+\newpage 
+
+%%
+%	Introduction
+%%
+\chapter{Introduction}
+* LowPAN, possible applications (use cases), why it's important.\\
+* The purpose of the proposed work will be to investigate smth. The proposal describes problems associated with enabling IP communication with devices in a LoWPAN.\\
+* As preparation for this work, several related areas have been studied in more
+depth and the collected background information; Structure of the proposal.\\
+
+\chapter{LoWPAN Networks}
+Low-power and lossy networks (LLNs) are the networks made of highly constrained nodes (limited CPU, memory, power) interconnected by a variety of "lossy" links (low-power radio links). Such networks can be characterized by low speed, low performance, low cost, and unstable connectivity.  A low-power wireless personal area network (LoWPAN) is a particular instance of an LLN, comprised devices that conform to the IEEE 802.15.4 standard \cite{ieee802.15.4}.
+
+%%
+%	Transmission of IPv6 Packets
+%%
+\chapter{IPv6 over LoWPAN Networks}
+
+%%
+%	Conclusion
+%%
+\chapter*{Conclusion}
+\addcontentsline{toc}{chapter}{Conclusion}
+
+%% Bibliography
+\newpage
+\bibliographystyle{plain}
+\bibliography{msc-proposal}
+\addcontentsline{toc}{chapter}{Bibliography}
+
+\nocite{ieee802.15.4} 
+\nocite{rfc2460} 
+\nocite{rfc4291} 
+\nocite{rfc4443}
+\nocite{rfc4861}
+\nocite{rfc4862}
+\nocite{rfc4919}
+\nocite{rfc4944} 
+\nocite{draft-usecases-05} 
+\nocite{draft-hc-06} 
+\nocite{draft-nd-06}
+
+\end{document}

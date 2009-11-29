@@ -1,0 +1,139 @@
+\documentclass[a4paper,11pt,oneside]{article} 
+ 
+\usepackage{parskip}                %% blank lines between paragraphs, no indent 
+\usepackage[pdftex]{graphicx}        %% include graphics, preferably pdf 
+\usepackage[pdftex]{hyperref}        %% many PDF options can be set here 
+\usepackage{graphicx}    % needed for including graphics e.g. EPS, PS 
+\usepackage {amssymb} 
+\usepackage{hyperref} 
+
+\newenvironment{mylisting}
+{\begin{list}{}{\setlength{\leftmargin}{1em}}\item\footnotesize\bfseries}
+{\end{list}}
+
+\newenvironment{mytinylisting}
+{\begin{list}{}{\setlength{\leftmargin}{1em}}\item\tiny\bfseries}
+{\end{list}}
+
+ 
+\begin{document} 
+\section{RFC 4944, Transmission of IPv6 Packets over IEEE 802.15.4 Networks}
+RFC4944 \cite{rfc4944} defines a 6LoWPAN adaptation format to carry IPv6 datagrams over such constrained links, taking into account limited
+bandwidth, memory, or energy resources that are expected in applications such as wireless sensor networks:
+\begin{itemize}
+\item stateless header compression for IPv6 datagrams (LOWPAN\_HC1 and LOWPAN\_HC2) to reduce the relatively large IPv6 and UDP headers down to (in the best case) several bytes;
+\item Fragmentation header to support the IPv6 minimum MTU requirement \cite{rfc2460};
+\item Mesh Addressing header to support Mesh Under sub-IP forwarding;
+\end{itemize}
+
+\section{ Internet Draft, Compression Format for IPv6 Datagrams in 6LoWPAN Networks} 
+The draft \cite{draft-hc-06} specifies a header compression format that is intended
+   to replace the LOWPAN\_HC1 defined in RFC4944 \cite{rfc4944}.
+
+\subsection{Motivation}
+\begin{itemize}
+\item LOWPAN\_HC1 and LOWPAN\_HC2 are insufficient for most practical uses of 6LoWPAN networks.  LOWPAN\_HC1 is most effective for link-local unicast communication, where IPv6 addresses carry the link-local prefix and an Interface Identifier (IID) directly derived from IEEE 802.15.4 addresses \cite{rfc4291}.  In this case, both addresses may be completely elided. 
+
+\item Routable addresses must be used when communicating with devices
+external to the LoWPAN or in a route-over configuration where IP
+forwarding occurs within the LoWPAN.  For routable addresses,
+LOWPAN\_HC1 requires both IPv6 source and destination addresses to
+carry the prefix in-line. 
+\end{itemize}
+
+\subsection{New features} 
+The draft defined two encoding formats:
+\begin{itemize}
+\item LOWPAN\_IPHC -- for effective compression of Unique Local, Global, and multicast IPv6
+addresses based on shared state within contexts;
+
+\item LOWPAN\_NHC -- for encoding arbitrary headers following the LOWPAN\_IPHC header.
+\end{itemize}
+
+\subsection{IPv6 Header Compression} 
+The draft \cite{draft-hc-06} introduces LOWPAN\_IPHC compression format for the IPv6 header. LOWPAN\_IPHC assumes the following common case IPv6 header values for 6LoWPAN communication:
+\begin{itemize}
+\item Version is 6; 
+\item Traffic Class and Flow Label are both zero; 
+\item Payload Length can be inferred from lower layers from either the 6LoWPAN Fragmentation header or the IEEE 802.15.4 header;
+\item Hop Limit will be set to a well-known value by the source; 
+\item addresses assigned to 6LoWPAN interfaces will be formed using the link-local prefix or a single routable prefix assigned to the entire 6LoWPAN network; 
+\item addresses assigned to 6LoWPAN interfaces are formed with an IID derived directly from either the 64-bit extended or 16-bit short IEEE 802.15.4 addresses.
+\end{itemize}
+
+The compression mechanism is adapted for these values of the header fields and  in such scenario the LOWPAN\_IPHC can compress the IPv6 header down to two octets (1-octet dispatch, 1-octet LOWPAN\_IPHC) with link-local communication.
+
+\subsection{LOWPAN\_IPHC Encoding Format}
+The IPv6 header encrypted with the LOWPAN\_IPHC encoding format consists of three parts (shown in Figure \ref{fig:lowpaniphc}):
+\begin{itemize}
+\item Dispatch type -- in case of LOWPAN\_IPHC is 3 bit value $110$;
+\item LOWPAN\_IPHC -- encoding that describes how an IPv6 header is compressed;
+\item Compressed IPv6 Header -- the IPv6 header fields that are not fully elided, either in a compressed form if the field is partially elided, or litteraly.
+\end{itemize}
+\begin{figure}[htp]
+\centering
+\begin{mylisting}
+\begin{verbatim}
++----------+-------------+-----------------------+
+| Dispatch | LOWPAN_IPHC | Compressed IPv6 Header|
++----------+-------------+-----------------------+
+\end{verbatim}
+\end{mylisting}
+\caption{LOWPAN\_IPHC Header}\label{fig:lowpaniphc}
+\end{figure}
+
+The LOWPAN\_IPHC encoding (shown in Figure) \ref{fig:lowpanbe} usually utilizes 13 bits, but may be extended by another octet to support additional contexts. 
+\begin{figure}[htp]
+\centering
+\begin{mylisting}
+\begin{verbatim}
+  0   1   2   3   4   5   6   7   8   9   0   1   2  
++---+---+---+---+---+---+---+---+---+---+---+---+---+
+|  TF   |NH | HLIM  |CID|SAC|  SAM  | M |DAC|  DAM  |
++---+---+---+---+---+---+---+---+---+---+---+---+---+
+\end{verbatim}
+\end{mylisting}
+\caption{LOWPAN\_IPHC Encoding}\label{fig:lowpanbe}
+\end{figure}
+
+The encoding supports 4 compression formats of the Traffic Class and Flow Label (TF field). The
+NH field specifies whether the IPv6 Next header field is carried in-line or compressed using LOWPAN\_NHC (described in Section \ref{sec:ipnh}). The HLIM encodes the compression type for the Hop Limit field. The CID field indicates
+whether an additional 8-bit Context Identifier Extension field immediately follows the DAM field. 
+
+The SAC, SAM, DAC and DAM fields describe how the source and destination addresses are compressed. The LOWPAN\_IPHC encoding supports stateless and stateful context-based compressions. The stateless compression makes use of the link-local prefixes (the value of those bits is the link-local prefix) and link-local addresses (derivable from the corresponding link-layer address). The stateful address compression can be applied to the source and destination IPv6 addresses when they do not statelessly match the source and destination link layer addresses.    
+The stateful compression relies on a conceptual context which is shared between the node that compresses a packet and the node(s) that need to expand it. However, the draft does not specify how these shared contexts are established and how the information is maintained within them.
+
+The M field specifies whether the Destination Address is a multicast address or not.
+
+
+\subsection{IPv6 Next Header Compression} \label{sec:ipnh}
+When the NH bit of LOWPAN\_IPHC is set to 1 the 6LoWPAN next header compression (LOWPAN\_NHC) is used. 
+This mechanism is intented to replace the LOWPAN\_HC2 compression defined in \cite{rfc4944}. In contrast, LOWPAN\_NHC allows to define comparession formats for arbitrary next headers, whereas LOWPAN\_HC2 can be used only for UDP, TCP, and ICMPv6.
+
+The value of IPv6 Next Header is recovered from the first bits in the LOWPAN\_NHC encoding and the remaining 
+bits are specific to the IPv6 Next Header value. Compression formats for different next headers are identified by a
+bit-pattern immediately following the LOWPAN\_IPHC compressed header and can have different length.
+The draft document defines a set of LOWPAN\_NHC encodings for selected IPv6 Extension Headers (i.e. UDP Header Compression).
+\begin{figure}[htp]
+\centering
+\begin{mylisting}
+\begin{verbatim}
++-------------+-----------+-------------+---------------+--------
+| LOWPAN_IPHC | In-line   | LOWPAN_NHC  | In-line Next  | Payload
+|   Encoding  | IP Fields |   Encoding  | Header Fields |
++-------------+-----------+-------------+---------------+--------
+\end{verbatim}
+\end{mylisting}
+\caption{Typical LOWPAN\_IPHC/LOWPAN\_NHC Header Configuration}\label{fig:lowpaniphc}
+\end{figure}
+
+
+\nocite{rfc2460} 
+\nocite{rfc4291} 
+\nocite{rfc4944} 
+\nocite{draft-hc-06} 
+ 
+\bibliographystyle{plain} 
+\bibliography{wrapup} 
+\end{document} 
+ 
