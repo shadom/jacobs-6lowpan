@@ -61,19 +61,37 @@ Abstract
 %	Introduction
 %%
 \chapter{Introduction}
-* LowPAN, possible applications (use cases), why it's important.\\
+* There are a lot of applications where we need many small devices + examples; why it's important;
+* LoWPAN\\
 * The purpose of the proposed work will be to investigate smth. The proposal describes problems associated with enabling IP communication with devices in a LoWPAN.\\
 * As preparation for this work, several related areas have been studied in more
 depth and the collected background information; Structure of the proposal.\\
 
 \chapter{LoWPAN Networks}
-Low-power and lossy networks (LLNs) are the networks made of highly constrained nodes (limited CPU, memory, power) interconnected by a variety of "lossy" links (low-power radio links). Such networks can be characterized by low speed, low performance, low cost, and unstable connectivity.  A low-power wireless personal area network (LoWPAN) is a particular instance of an LLN, comprised devices that conform to the IEEE 802.15.4 standard \cite{ieee802.15.4}.
+A low-power wireless personal area network (LoWPAN) is a simple low cost communication network that allows wireless connectivity in applications with limited power and relaxed throughput requirements. LoWPAN networks comprises devices that conform to the IEEE 802.15.4 standard \cite{ieee802.15.4}. LoWPAN devices  are usually characterized as having limited processing capability (the smallest common LoWPAN nodes have 8-bit processors with clock rates around 10 MHz), small memory capacity (common RAM sizes for LoWPAN devices consist of a few kilobytes) and battery-operated.
+
+\section{IEEE 802.15.4}
+IEEE 802.15.4 standard specifies the physical layer and media access control for low-rate wireless personal area networks. The standard intends to offer the fundamental lower network layers of a type of wireless personal area network which focuses on low-cost, low-speed communication between tiny devices (motes). Such networks are typically limited to a personal operating space (POS) of up to 10 meters with a transfer rate of 250 kbit/s and involve little or no infrastructure. 
+
+The IEEE 802.15.4 standard distinguishes between two types of nodes, reduced-function devices (RFDs) and full-function devices (FFDs).                                   FFDs typically have more resources and may be mains powered.  Therefor, FFDs aid RFDs by providing functions such as network coordination and packet forwarding.
+
+An 802.15.4 network may operate in either the star or the peer-to-peer topology. In the star topology devices communicate with a single central PAN coordinator. In the peer-to-peer topology a device can communicate with any other device as long as they are in range of one another. Based on the peer-to-peer topology more complex network formations may be constructed, such as mesh networking topology. However, the standard does not define a network layer, therefor routing is not directly supported, but such an additional layer can add support for multihop communications. All devices operating on a network of either topology have unique 64 bit extended addresses. This address can be used for direct communication within the PAN, or it can be exchanged for a short 16 bit address allocated by the PAN coordinator.
+
+The basic unit of data transport is a frame. The standard defines four frame structures: a beacon frame, used by a coordinator to transmit beacons;
+a data frame, used for all transfers of data; an acknowledgment frame, used for confirming successful frame reception; a MAC command frame, used for handling all MAC control transfers. Additionally, a superframe structure may be defined by the coordinator. In such case two beacons act as superframe limits and provide synchronization to other devices. A superframe consists of sixteen equal-length slots, which can be further divided into an active part and an inactive part, during which the coordinator may enter power saving mode. Any device wishing to communicate during the contention access period (CAP) between two beacons shall compete with other devices using a slotted CSMA-CA mechanism. For applications requiring specific data bandwidth, the PAN coordinator may dedicate portions of the active superframe, which form the contention-free period (CFP).
+
+An important aspect of 802.15.4 is its limitation on the frame size, which is specified by the frame length 7 bit field (0-127 bytes). Taking into account the frame header, which is up to 25 octets, this leaves 102 bytes for payload of the higher layers.
+
+The standard also defines several security services such as maintaining an access control list (ACL) and
+using symmetric-key cryptography to protect transmitted frames. However, key management is not specified and must be provided by the higher layers. 
+
 
 %%
 %	Transmission of IPv6 Packets
 %%
 \chapter{IPv6 over LoWPAN Networks}
-
+* why it's good (4919 Assumptions);\\
+* problems;\\
 %%
 %	Conclusion
 %%
