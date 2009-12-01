@@ -92,12 +92,12 @@ Abstract
 * As preparation for this work, several related areas have been studied in more
 depth and the collected background information; Structure of the proposal.\\
 
-\chapter{IEEE 802.15.4}
+\chapter{IEEE 802.15.4}\label{ch:ieee802.15.4}
 The IEEE 802.15.4 standard \cite{ieee802.15.4} specifies the physical layer and media access control for low-rate wireless personal area networks. The standard intends to offer the fundamental lower network layers of a type of wireless personal area network which focuses on low-cost, low-speed communication between tiny devices (motes). Such networks are typically limited to a personal operating space (POS) of up to 10 meters with a transfer rate of 250 kbit/s and involve little or no infrastructure. 
 
 The IEEE 802.15.4 standard distinguishes between two types of nodes, reduced-function devices (RFDs) and full-function devices (FFDs).                                   FFDs typically have more resources and may be mains powered.  Therefor, FFDs aid RFDs by providing functions such as network coordination and packet forwarding.
 
-An 802.15.4 network may operate in either the star or the peer-to-peer topology. In the star topology devices communicate with a single central PAN coordinator. In the peer-to-peer topology a device can communicate with any other device as long as they are in range of one another. Based on the peer-to-peer topology more complex network formations may be constructed, such as mesh networking topology. However, the standard does not define a network layer, therefor routing is not directly supported, but such an additional layer can add support for multihop communications. All devices operating on a network of either topology have unique 64 bit extended addresses. This address can be used for direct communication within the PAN, or it can be exchanged for a short 16 bit address allocated by the PAN coordinator.
+An 802.15.4 network may operate in either the star or the peer-to-peer topology. In the star topology devices communicate with a single central                           a personal area network (PAN) coordinator. In the peer-to-peer topology a device can communicate with any other device as long as they are in range of one another. Based on the peer-to-peer topology more complex network formations may be constructed, such as mesh networking topology. However, the standard does not define a network layer, therefor routing is not directly supported, but such an additional layer can add support for multihop communications. All devices operating on a network of either topology have unique 64 bit extended addresses. This address can be used for direct communication within the PAN, or it can be exchanged for a short 16 bit address allocated by the PAN coordinator.
 
 The basic unit of data transport is a frame. The standard defines four frame structures: a beacon frame, used by a coordinator to transmit beacons;
 a data frame, used for all transfers of data; an acknowledgment frame, used for confirming successful frame reception; a MAC command frame, used for handling all MAC control transfers. Additionally, a superframe structure may be defined by the coordinator. In such case two beacons act as superframe limits and provide synchronization to other devices. A superframe consists of sixteen equal-length slots, which can be further divided into an active part and an inactive part, during which the coordinator may enter power saving mode. Any device wishing to communicate during the contention access period (CAP) between two beacons shall compete with other devices using a slotted CSMA-CA mechanism. For applications requiring specific data bandwidth, the PAN coordinator may dedicate portions of the active superframe, which form the contention-free period (CFP).
@@ -110,15 +110,34 @@ using symmetric-key cryptography to protect transmitted frames. However, key man
 %%
 %	Transmission of IPv6 Packets
 %%
-\chapter{IPv6 over IEEE 802.15.4}
-A low-power wireless personal area network (LoWPAN) is a simple low throughput wireless network comprising typically low cost and low power devices that conform to the IEEE 802.15.4-2003 standard. The IEEE 802.15.4-2003 standard specifies node-to-node frame delivery between the devices which are within reachable distance from each other. On top of IEEE 802.15.4 a network layer (layer 3 of the seven-layer OSI model) has to be specified that would provide end-to-end packet delivery including routing through intermediate hosts. 
+\chapter{6LoWPAN Networks}
+A low-power wireless personal area network (LoWPAN) is a simple low throughput wireless network comprising low cost and low power devices that conform to the IEEE 802.15.4-2003 standard. The IEEE 802.15.4-2003 standard specifies node-to-node frame delivery between the devices which are within reachable distance from each other. On top of IEEE 802.15.4 a network layer (layer 3 of the seven-layer OSI model) has to be defined that would provide end-to-end packet delivery including routing through intermediate hosts. 
 
-The Internet Protocol (IP) is the most widely deployed network layer protocol. Internet Protocol Version 4 (IPv4) is still the dominant protocol of the Internet, although the successor, Internet Protocol Version 6 (IPv6) \cite{rfc2460} is being deployed actively worldwide. The application of IP technologies to LoWPANs would provide a number of benefits. IP-based technologies are well-known and proven which allows to use the existing infrastructure. IP-based devices can be easily connected to other IP-based networks.
+%The Internet Protocol (IP) is the most widely deployed network layer protocol. Internet Protocol Version 4 (IPv4) is still the dominant protocol of the Internet, although the successor, Internet Protocol Version 6 (IPv6) \cite{rfc2460} is being deployed actively worldwide. The application of IP technologies to LoWPANs would provide a number of benefits. IP-based technologies are well-known and proven which allows to use the existing infrastructure. IP-based devices can be easily connected to other IP-based networks. Today there exist a lot of ready-to-use tools for diagnostics and management of IP networks.
+
+6lowpan (IPv6 over Low power Wireless Personal Area Networks) is a working group within the IETF concerned with the specification of mechanisms to allow IPv6 packets to be sent to and received from over IEEE 802.15.4 based networks. The working group has already completed two documents: \cite{rfc4919} that documents and discusses the problem statement and \cite{rfc4944} that defines the format for the adaptation between IPv6 and 802.15.4. The latter document describes the frame format for transmission of IPv6 packets and the method of forming IPv6 link-local addresses and statelessly autoconfigured addresses on IEEE 802.15.4 networks.
+
+As described in chapter \ref{ch:ieee802.15.4}, IEEE 802.15.4 defines four types of frames: beacon frames, MAC command frames, acknowledgement frames, and data frames.  IPv6 packets are carried on data frames.  Data frames may optionally request acknowledgments to aid link-layer recovery.
+
+\section{Addressing}
+IEEE 802.15.4 defines addresses of two types: IEEE 64-bit extended addresses or 16-bit short addresses unique within the PAN. Both types are supported by 6LoWPAN. 
+
+6LoWPAN supports stateless address autoconfiguration, which allows to obtain the Interface Identifier \cite{rfc4291} for an IEEE 802.15.4 interface  based on the EUI-64 identifier \cite{eui64} \cite{rfc2464} assigned to the IEEE802.15.4 device. Even though all 802.15.4 devices have an EUI-64 address, 16-bit short addresses also can be used for address autoconfiguration.  In this case, a pseudo 48-bit address is formed by concatenating 16 zero bits to the 16-bit PAN ID, the resulting 32 bits are concatenated with the 16-bit short address and the interface identifier is formed from this 48-bit address:
+\begin{center}\texttt{16\_bit\_PAN\_ID:16\_zero\_bits:16\_bit\_short\_address}\end{center}
+
+The IPv6 link-local address for an IEEE 802.15.4 interface is formed by appending the Interface Identifier to the prefix \texttt{FE80::/64}.
+
+Packets with a multicast IPv6 destination address are sent to the 16-bit 802.15.4 address obtained by concatenating the 3-bit multicast prefix 101, the last 5 bits in the 15-th octet and the whole 16-th octet of the multicast IPv6 address.
+
+\section{Adaptation Layer}
+The IPv6 minimum Maximum Transmission Unit (MTU) size is defined as 1280 octets. As described in chapter \ref{ch:ieee802.15.4}, the maximum IEEE 802.15.4 frame size is limited to 127 octets.  Taking into account the maximum frame overhead of 25 octets, 102 octets are left at the media access control layer. Link-layer security imposes further overhead, which in the maximum case (21 octets for AES-CCM-128) leaves only 81 octets available, which is far below the minimum IPv6 packet size. Therefor, a fragmention and reassembly adaptation layer is provided at the layer below IP.
+
+Furthermore, the IPv6 header is 40 octets long which leaves only 41 octets for upper-layer protocols, like UDP.  Since the latter uses 8 octets in the header, application data size is limited to 33 octets.  
 
 
 
-
-
+\subsection{Fragmentation Header}
+\chapter{6LoWPAN Neighbor Discovery}
 
 %%
 %	Conclusion
@@ -133,7 +152,9 @@ The Internet Protocol (IP) is the most widely deployed network layer protocol. I
 \addcontentsline{toc}{chapter}{Bibliography}
 
 \nocite{ieee802.15.4} 
-\nocite{rfc2460} 
+\nocite{eui64} 
+\nocite{rfc2460}
+\nocite{rfc2464}
 \nocite{rfc4291} 
 \nocite{rfc4443}
 \nocite{rfc4861}
