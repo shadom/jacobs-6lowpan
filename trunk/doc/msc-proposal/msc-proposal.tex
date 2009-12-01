@@ -117,7 +117,7 @@ A low-power wireless personal area network (LoWPAN) is a simple low throughput w
 
 6lowpan (IPv6 over Low power Wireless Personal Area Networks) is a working group within the IETF concerned with the specification of mechanisms to allow IPv6 packets to be sent to and received from over IEEE 802.15.4 based networks. The working group has already completed two documents: \cite{rfc4919} that documents and discusses the problem statement and \cite{rfc4944} that defines the format for the adaptation between IPv6 and 802.15.4. The latter document describes the frame format for transmission of IPv6 packets and the method of forming IPv6 link-local addresses and statelessly autoconfigured addresses on IEEE 802.15.4 networks.
 
-As described in chapter \ref{ch:ieee802.15.4}, IEEE 802.15.4 defines four types of frames: beacon frames, MAC command frames, acknowledgement frames, and data frames.  IPv6 packets are carried on data frames.  Data frames may optionally request acknowledgments to aid link-layer recovery.
+As described in Chapter \ref{ch:ieee802.15.4}, IEEE 802.15.4 defines four types of frames: beacon frames, MAC command frames, acknowledgement frames, and data frames.  IPv6 packets are carried on data frames.  Data frames may optionally request acknowledgments to aid link-layer recovery.
 
 \section{Addressing}
 IEEE 802.15.4 defines addresses of two types: IEEE 64-bit extended addresses or 16-bit short addresses unique within the PAN. Both types are supported by 6LoWPAN. 
@@ -129,14 +129,21 @@ The IPv6 link-local address for an IEEE 802.15.4 interface is formed by appendin
 
 Packets with a multicast IPv6 destination address are sent to the 16-bit 802.15.4 address obtained by concatenating the 3-bit multicast prefix 101, the last 5 bits in the 15-th octet and the whole 16-th octet of the multicast IPv6 address.
 
-\section{Adaptation Layer}
-The IPv6 minimum Maximum Transmission Unit (MTU) size is defined as 1280 octets. As described in chapter \ref{ch:ieee802.15.4}, the maximum IEEE 802.15.4 frame size is limited to 127 octets.  Taking into account the maximum frame overhead of 25 octets, 102 octets are left at the media access control layer. Link-layer security imposes further overhead, which in the maximum case (21 octets for AES-CCM-128) leaves only 81 octets available, which is far below the minimum IPv6 packet size. Therefor, a fragmention and reassembly adaptation layer is provided at the layer below IP.
+\section{Adaptation layer}\label{sec:adapt.layer}
+The IPv6 minimum Maximum Transmission Unit (MTU) size is defined as 1280 octets. As described in Chapter \ref{ch:ieee802.15.4}, the maximum IEEE 802.15.4 frame size is limited to 127 octets.  Taking into account the maximum frame overhead of 25 octets, 102 octets are left at the media access control layer. Link-layer security imposes further overhead, which in the maximum case (21 octets for AES-CCM-128) leaves only 81 octets available, which is far below the minimum IPv6 packet size. Therefor, a fragmentation and reassembly adaptation layer is provided at the layer below IP.
 
-Furthermore, the IPv6 header is 40 octets long which leaves only 41 octets for upper-layer protocols, like UDP.  Since the latter uses 8 octets in the header, application data size is limited to 33 octets.  
+IPv6 datagrams transported over IEEE 802.15.4 are prefixed by an encapsulation header stack. Each header in the header stack contains a header type followed by zero or more header fields.  Three optional encapsulation headers may appear in the following order: Mesh Addressing Header, Broadcast Header and Fragmentation Header. These headers are described in Sections \ref{subsec:mesh.header}, \ref{subsec:frag.header} and \ref{subsec:broad.header} respectively. The Dispatch
+
+\subsection{Fragmentation Header}\label{subsec:frag.header}
+\subsection{Mesh addressing Header}\label{subsec:mesh.header}
+\subsection{Broadcast Header}\label{subsec:broad.header}
+
+\section{Header compression}
+As described in Section \ref{sec:adapt.layer}, 81 octets are left in a IEEE 802.15.4 frame for IPv6. The IPv6 header is 40 octets long which leaves only 41 octets for upper-layer protocols, like UDP.  The latter uses 8 octets in the header, which leaves 33 octets for application data. 
+The fragmentation and reassembly layer, described in Section \ref{sec:adapt.layer}, will also use at least one additional octet, what makes header compression almost being unavoidable.  
 
 
 
-\subsection{Fragmentation Header}
 \chapter{6LoWPAN Neighbor Discovery}
 
 %%
