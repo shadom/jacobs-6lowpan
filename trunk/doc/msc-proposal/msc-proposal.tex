@@ -137,12 +137,15 @@ The IPv6 link-local address for an IEEE 802.15.4 interface is formed by appendin
 Packets with a multicast IPv6 destination address are sent to the 16-bit 802.15.4 address obtained by concatenating the 3-bit multicast prefix 101, the last 5 bits in the 15-th octet and the whole 16-th octet of the multicast IPv6 address.
 
 \section{Adaptation layer}\label{sec:adapt.layer}
-The IPv6 minimum Maximum Transmission Unit (MTU) size is defined as 1280 octets. As described in Chapter \ref{ch:ieee802.15.4}, the maximum IEEE 802.15.4 frame size is limited to 127 octets.  Taking into account the maximum frame overhead of 25 octets, 102 octets are left at the media access control layer. Link-layer security imposes further overhead, which in the maximfum case (21 octets for AES-CCM-128) leaves only 81 octets available, which is far below the minimum IPv6 packet size. Therefor, a fragmentation and reassembly adaptation layer is provided at the layer below IP.
+The IPv6 minimum Maximum Transmission Unit (MTU) size is defined as 1280 octets. As described in Chapter \ref{ch:ieee802.15.4}, the maximum IEEE 802.15.4 frame size is limited to 127 octets.  Taking into account the maximum frame overhead of 25 octets, 102 octets are left at the media access control layer. Link-layer security imposes further overhead, which in the maximum case (21 octets for AES-CCM-128) leaves only 81 octets available, which is far below the minimum IPv6 packet size. Therefor, a fragmentation and reassembly adaptation layer is provided at the layer below IP.
 
-IPv6 datagrams transported over IEEE 802.15.4 are prefixed by an encapsulation header stack. Each header in the header stack contains a header type followed by zero or more header fields.  There are four encapsulation headers defined: Mesh Addressing Header, Broadcast Header and Fragmentation Header (described in Sections \ref{subsec:mesh.header}, \ref{subsec:frag.header},\ref{subsec:broad.header} and \ref{subsec:dispatch.header} respectively). The headers must appear in the specified order. First three of them are optional, whereas the last one is required.
+Even though 802.15.4 networks are expected to commonly use mesh routing, the IEEE 802.15.4-2003 \cite{ieee802.15.4} specification does not define such capability. Mesh routing allows two devices  without direct reachability to communicate with each other. In such mesh scenarios, intermediate devices are used as forwarders towards the final destination. In order to support mesh routing, in addition to the hop-by-hop source and destination link-layer addresses the originator and final destination addresses need to be known. For this purpose a Mesh Addressing header is introduced.
+
+
+IPv6 datagrams transported over IEEE 802.15.4 are prefixed by an encapsulation header stack. Each header in the header stack contains a header type followed by zero or more header fields.  There are four encapsulation headers defined: Mesh Addressing Header, Broadcast Header, Fragmentation Header and Dispatch Header (described in Sections \ref{subsec:mesh.header}, \ref{subsec:frag.header},\ref{subsec:broad.header} and \ref{subsec:dispatch.header} respectively). These headers must appear in the specified order. First three of them are optional, whereas the last one is required.
 
 \subsection{Dispatch Header}\label{subsec:dispatch.header}
-The dispatch type is defined as a zero bit as the first bit followed by a one bit.
+The dispatch type is defined by a zero bit as the first bit followed by a one bit. The dispatch header is shown in Figure \ref{fig:dispatch.header}.
 
 \begin{figure}[htp]
 \centering
@@ -157,12 +160,82 @@ The dispatch type is defined as a zero bit as the first bit followed by a one bi
 \end{mylisting}
 \caption{Dispatch Type and Header}\label{fig:dispatch.header}
 \end{figure}
-The Dispatch value identifies the type of header immediately following the Dispatch Header.
-
+The Dispatch value identifies the type of payload immediately following the Dispatch Header. This can  be, for example, a compressed or uncompressed IPv6 header. More details can be found in \cite{rfc4944}.
 
 \subsection{Mesh addressing Header}\label{subsec:mesh.header}
+
+The mesh header type is defined by a one bit and zero bit as the first two bits. The mesh header is shown in Figure \ref{fig:mesh.header}:
+\begin{figure}[htp]
+\centering
+\begin{mylisting}
+\begin{verbatim}
+                       1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |1 0|V|F|HopsLft| originator address, final address
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+\end{verbatim}
+\end{mylisting}
+\caption{Mesh Addressing Type and Header}\label{fig:mesh.header}
+\end{figure}
+
+The \texttt{V} and \texttt{F} bits indicate whether an IEEE extended 64-bit address (EUI-64) or a short 16-bit addresses are used for the originator and the final destination addresses respectively. The \texttt{HopsLft} field is used as a hop limit and decremented by every forwarding node. The left part of the mesh header specifies the originator and final destination link-layer addresses.
+
 \subsection{Fragmentation Header}\label{subsec:frag.header}
+As previously discussed, an entire IPv6 datagram may not fit within a single 802.15.4 frame. In such case it is broken into link fragments. The first link fragment contains the first fragment header shown in Figure \ref{fig:first.fragment}.
+\begin{figure}[htp]
+\centering
+\begin{mylisting}
+\begin{verbatim}
+                      1                   2                   3
+  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |1 1 0 0 0|    datagram_size    |         datagram_tag          |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+\end{verbatim}
+\end{mylisting}
+\caption{First Fragment}\label{fig:first.fragment}
+\end{figure}
+
+The second and subsequent link fragments contains a fragmentation header that conforms to the format shown in Figure \ref{fig:sub.fragment}.
+
+\begin{figure}[htp]
+\centering
+\begin{mylisting}
+\begin{verbatim}
+                     1                   2                   3
+   1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |1 1 1 0 0|    datagram_size    |         datagram_tag          |
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |datagram_offset|
+  +-+-+-+-+-+-+-+-+
+\end{verbatim}
+\end{mylisting}
+\caption{Subsequent Fragments}\label{fig:sub.fragment}
+\end{figure}
+
+The first and subsequent fragment header types are specified by the binary sequences \texttt{11000} and \texttt{11100} respectively.  The  \texttt{datagram\_size} 11-bit field encodes the size of the entire IP packet before link-layer fragmentation.  The \texttt{datagram\_tag} field is the same for all link fragments of a datagram and incremented by the sender for successive fragmented datagrams. The \texttt{datagram\_offset} field is present only in the second and subsequent link fragments and specifies the offset of the fragment from the beginning of the payload datagram.
+
 \subsection{Broadcast Header}\label{subsec:broad.header}
+Broadcast is an additional mesh routing functionality. For that a broadcast header is defined the format of which is shown in Figure \ref{fig:broad.header}.
+\begin{figure}[htp]
+\centering
+\begin{mylisting}
+\begin{verbatim}
+                       1
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+  |0|1|0|1|0|0|0|0|Sequence Number|
+  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+\end{verbatim}
+\end{mylisting}
+\caption{Broadcast Header
+}\label{fig:broad.header}
+\end{figure}
+
+The broadcast header consists of a dispatch type \texttt{01010000} followed by a sequence number field, which is used to detect duplicate packets.
+This field is incremented by the originator whenever it sends a new mesh broadcast or multicast packet.
 
 \section{Header compression}
 As described in Section \ref{sec:adapt.layer}, 81 octets are left in a IEEE 802.15.4 frame for IPv6. The IPv6 header is 40 octets long which leaves only 41 octets for upper-layer protocols, like UDP.  The latter uses 8 octets in the header, which leaves 33 octets for application data. 
