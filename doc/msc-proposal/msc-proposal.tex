@@ -95,7 +95,7 @@ Abstract
 \chapter{Introduction}
 * There are a lot of applications where we need many small devices + examples; why it's important;
 * LoWPAN\\
-* The purpose of the proposed work will be to investigate smth. The proposal describes problems associated with enabling IP communication with devices in a LoWPAN.\\
+* The purpose of the proposed work will be to investigate something. The proposal describes problems associated with enabling IP communication with devices in a LoWPAN.\\
 * As preparation for this work, several related areas have been studied in more
 depth and the collected background information; Structure of the proposal.\\
 
@@ -136,7 +136,7 @@ The IPv6 link-local address for an IEEE 802.15.4 interface is formed by appendin
 
 Packets with a multicast IPv6 destination address are sent to the 16-bit 802.15.4 address obtained by concatenating the 3-bit multicast prefix 101, the last 5 bits in the 15-th octet and the whole 16-th octet of the multicast IPv6 address.
 
-\section{Adaptation layer}\label{sec:adapt.layer}
+\section{Adaptation Layer}\label{sec:adapt.layer}
 The IPv6 minimum Maximum Transmission Unit (MTU) size is defined as 1280 octets. As described in Chapter \ref{ch:ieee802.15.4}, the maximum IEEE 802.15.4 frame size is limited to 127 octets.  Taking into account the maximum frame overhead of 25 octets, 102 octets are left at the media access control layer. Link-layer security imposes further overhead, which in the maximum case (21 octets for AES-CCM-128) leaves only 81 octets available, which is far below the minimum IPv6 packet size. Therefor, a fragmentation and reassembly adaptation layer is provided at the layer below IP.
 
 Even though 802.15.4 networks are expected to commonly use mesh routing, the IEEE 802.15.4-2003 \cite{ieee802.15.4} specification does not define such capability. Mesh routing allows two devices  without direct reachability to communicate with each other. In such mesh scenarios, intermediate devices are used as forwarders towards the final destination. In order to support mesh routing, in addition to the hop-by-hop source and destination link-layer addresses the originator and final destination addresses need to be known. For this purpose a Mesh Addressing header is introduced.
@@ -220,14 +220,13 @@ The first and subsequent fragment header types are specified by the binary seque
 \subsection{Broadcast Header}\label{subsec:broad.header}
 Broadcast is an additional mesh routing functionality. For that a broadcast header is defined the format of which is shown in Figure \ref{fig:broad.header}.
 \begin{figure}[htp]
-\centering
 \begin{mylisting}
 \begin{verbatim}
-                       1
-   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-  |0|1|0|1|0|0|0|0|Sequence Number|
-  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                                       1
+                   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+                  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                  |0|1|0|1|0|0|0|0|Sequence Number|
+                  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 \end{verbatim}
 \end{mylisting}
 \caption{Broadcast Header
@@ -237,11 +236,20 @@ Broadcast is an additional mesh routing functionality. For that a broadcast head
 The broadcast header consists of a dispatch type \texttt{01010000} followed by a sequence number field, which is used to detect duplicate packets.
 This field is incremented by the originator whenever it sends a new mesh broadcast or multicast packet.
 
-\section{Header compression}
+\section{Header Compression}
 As described in Section \ref{sec:adapt.layer}, 81 octets are left in a IEEE 802.15.4 frame for IPv6. The IPv6 header is 40 octets long which leaves only 41 octets for upper-layer protocols, like UDP.  The latter uses 8 octets in the header, which leaves 33 octets for application data. 
 The fragmentation and reassembly layer, described in Section \ref{sec:adapt.layer}, will also use at least one additional octet, what makes header compression almost being unavoidable.  
 
+RFC 4944 \cite{rfc4944} defines stateless header compression mechanisms for IPv6 datagrams (LOWPAN\_HC1 and LOWPAN\_HC2) to reduce the relatively large IPv6 and UDP headers. However, LOWPAN\_HC1 and LOWPAN\_HC2 are insufficient for most practical uses of 6LoWPAN networks, since they are effective only for link-local unicast communication, where IPv6 addresses derived directly from IEEE 802.15.4 addresses. When communicating with devices external to the LoWPAN or in a route-over configuration where IP forwarding occurs within the LoWPAN, LOWPAN\_HC1 carries both IPv6 source and destination addresses in-line. Internet Draft document \cite{draft-hc-06} defines an encoding format, LOWPAN\_IPHC, for effective compression of unique local, global, and multicast IPv6 addresses based on shared contexts. In addition, it also defines an encoding format, LOWPAN\_NHC, for arbitrary next header compression.
 
+\subsection{HC1 Header Encoding}
+HC1 compression format does not use any shared context and compresses headers relying on information pertaining to the entire link.
+
+\subsection{HC2 Header Encoding}
+
+\subsection{IPHC Header Encoding}
+
+\subsection{NHC Header Encoding}
 
 \chapter{6LoWPAN Neighbor Discovery}
 
