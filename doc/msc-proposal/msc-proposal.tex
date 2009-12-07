@@ -160,7 +160,7 @@ The dispatch type is defined by a zero bit as the first bit followed by a one bi
 \end{mylisting}
 \caption{Dispatch Type and Header}\label{fig:dispatch.header}
 \end{figure}
-The Dispatch value identifies the type of payload immediately following the Dispatch Header. This can  be, for example, a compressed or uncompressed IPv6 header. More details can be found in \cite{rfc4944}.
+The dispatch value identifies the type of payload immediately following the Dispatch Header. This can  be, for example, a compressed or uncompressed IPv6 header. More details can be found in \cite{rfc4944}.
 
 \subsection{Mesh addressing Header}\label{subsec:mesh.header}
 
@@ -243,7 +243,13 @@ The fragmentation and reassembly layer, described in Section \ref{sec:adapt.laye
 RFC 4944 \cite{rfc4944} defines stateless header compression mechanisms for IPv6 datagrams (LOWPAN\_HC1 and LOWPAN\_HC2) to reduce the relatively large IPv6 and UDP headers. However, LOWPAN\_HC1 and LOWPAN\_HC2 are insufficient for most practical uses of 6LoWPAN networks, since they are effective only for link-local unicast communication, where IPv6 addresses derived directly from IEEE 802.15.4 addresses. When communicating with devices external to the LoWPAN or in a route-over configuration where IP forwarding occurs within the LoWPAN, LOWPAN\_HC1 carries both IPv6 source and destination addresses in-line. Internet Draft document \cite{draft-hc-06} defines an encoding format, LOWPAN\_IPHC, for effective compression of unique local, global, and multicast IPv6 addresses based on shared contexts. In addition, it also defines an encoding format, LOWPAN\_NHC, for arbitrary next header compression.
 
 \subsection{HC1 Header Encoding}
-HC1 compression format does not use any shared context and compresses headers relying on information pertaining to the entire link.
+The HC1 compression format does not use any shared context and compresses headers relying on information pertaining to the entire link. The following IPv6 header values are expected to be common on 6LoWPAN network: Version is IPv6; both IPv6 source and destination addresses are link local;  the IPv6 interface identifiers for the source or destination addresses can be inferred from the layer two source and destination addresses; the packet length can be inferred either from layer two or from the "datagram\_size" field in the fragment header; both the Traffic Class and the Flow Label are zero; and the Next Header is UDP, ICMP or TCP. The Hop Limit (8 bits) field is the only one that always needs to be carried. Using the HC1 encoding allows to compress a 40 byte IPv6 header to 2 bytes.
+
+The HC1 encoding uses a dispatch value of $000010$ to specify that the payload following the dispatch header, described in Section \ref{subsec:dispatch.header}, is a HC1 compressed IPv6 header. The HC1 header is 8 bits. Bits 0 and 1 specify the encoding for the IPv6 source prefix and interface identifier respectively: $0$ -- the field is carried in-line; $1$ -- link-local address is assumed. Bits 2 and 3 specify how the destination address is encoded (the same encoding as for the source address). If bit 4 is set then  Traffic Class and Flow Label fields are zero, otherwise their values are not compressed and carried inline. Bits 5 and 6 indicate the Next Header: $00$ -- the field is not compressed and carried inlie, $01$ corresponds to UDP, $10$ -- ICMP, $11$ -- TCP. The last bit specifies whether HC1 header is immediately followed by more header compression bits of the HC2 encoding format.
+
+By using this encoding an IPv6 header can be compressed to different degrees and only non-compressed fields need to be sent. The only field that is always present is the Hop Limit (8 bits). It follows the HC1 encoding fields. Other non-compressed fields follow the Hop Limit.
+
+
 
 \subsection{HC2 Header Encoding}
 
