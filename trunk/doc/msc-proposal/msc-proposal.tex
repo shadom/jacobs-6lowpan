@@ -245,13 +245,17 @@ RFC 4944 \cite{rfc4944} defines stateless header compression mechanisms for IPv6
 \subsection{HC1 Header Encoding}
 The HC1 compression format does not use any shared context and compresses headers relying on information pertaining to the entire link. The following IPv6 header values are expected to be common on 6LoWPAN network: Version is IPv6; both IPv6 source and destination addresses are link local;  the IPv6 interface identifiers for the source or destination addresses can be inferred from the layer two source and destination addresses; the packet length can be inferred either from layer two or from the "datagram\_size" field in the fragment header; both the Traffic Class and the Flow Label are zero; and the Next Header is UDP, ICMP or TCP. The Hop Limit (8 bits) field is the only one that always needs to be carried. Using the HC1 encoding allows to compress a 40 byte IPv6 header to 2 bytes.
 
-The HC1 encoding uses a dispatch value of $000010$ to specify that the payload following the dispatch header, described in Section \ref{subsec:dispatch.header}, is a HC1 compressed IPv6 header. The HC1 header is 8 bits. Bits 0 and 1 specify the encoding for the IPv6 source prefix and interface identifier respectively: $0$ -- the field is carried in-line; $1$ -- link-local address is assumed. Bits 2 and 3 specify how the destination address is encoded (the same encoding as for the source address). If bit 4 is set then  Traffic Class and Flow Label fields are zero, otherwise their values are not compressed and carried inline. Bits 5 and 6 indicate the Next Header: $00$ -- the field is not compressed and carried inlie, $01$ corresponds to UDP, $10$ -- ICMP, $11$ -- TCP. The last bit specifies whether HC1 header is immediately followed by more header compression bits of the HC2 encoding format.
+The HC1 encoding uses a dispatch value of $000010$ to specify that the payload following the dispatch header, described in Section \ref{subsec:dispatch.header}, is a HC1 compressed IPv6 header. The HC1 header is 8 bits. Bits 0 and 1 specify the encoding for the IPv6 source prefix and interface identifier respectively: $0$ -- the field is carried in-line; $1$ -- link-local address is assumed. Bits 2 and 3 specify how the destination address is encoded (the same encoding as for the source address). If bit 4 is set then  Traffic Class and Flow Label fields are zero, otherwise their values are not compressed and carried in-line. Bits 5 and 6 indicate the Next Header: $00$ -- the field is not compressed and carried inlie, $01$ corresponds to UDP, $10$ -- ICMP, $11$ -- TCP. The last bit specifies whether HC1 header is immediately followed by more header compression bits of the HC2 encoding format.
 
 By using this encoding an IPv6 header can be compressed to different degrees and only non-compressed fields need to be sent. The only field that is always present is the Hop Limit (8 bits). It follows the HC1 encoding fields. Other non-compressed fields follow the Hop Limit.
 
+\subsection{HC\_UDP Header Encoding}
+The HC\_UDP encoding is used for compression of a UDP header. It is applied only if bits $5$ and $6$ in HC1 specify that the protocol that follows the IPv6 header is UDP and bit 7 indicates that the HC2 encoding is used. The HC\_UDP encoding allows to compress the UDP header to 4 octets instead of the original 8 octets.
 
+The first $8$ bits of the HC\_UDP encoding specify how the UDP header is compressed. Both the source and destination port fields may be compressed to $4$ bits. It is indicated by bits $0$ and $1$ of the HC\_UDP encoding for the source and destination ports respectively. In such case, the actual $16$-bit port is obtained by calculating $61616$ + short port value, which is a $4$ bit value carried in-line. If bit $2$ of the HC\_UDP encoding is set then the UDP length header field is computed from IPv6 header length information, otherwise it's carried in-line. HC\_UDP encoding bits 3-7 are reserved for future use. The UDP header's checksum field is not compressed and is therefore carried in full.
 
-\subsection{HC2 Header Encoding}
+The non-compressed or partially compressed fields in the UDP header always follow the IPv6 header. All present UDP header in-line fields always appear in the same order as the corresponding fields appear in a normal UDP header \cite{rfc780}, e.g., source port, destination port, length, and checksum.
+
 
 \subsection{IPHC Header Encoding}
 
@@ -265,7 +269,7 @@ By using this encoding an IPv6 header can be compressed to different degrees and
 \chapter*{Conclusion}
 \addcontentsline{toc}{chapter}{Conclusion}
 
-%% Bibliography
+% Bibliography
 \newpage
 \bibliographystyle{plain}
 \bibliography{msc-proposal}
@@ -273,6 +277,7 @@ By using this encoding an IPv6 header can be compressed to different degrees and
 
 \nocite{ieee802.15.4} 
 \nocite{eui64} 
+\nocite{rfc780}
 \nocite{rfc2460}
 \nocite{rfc2464}
 \nocite{rfc4291} 
