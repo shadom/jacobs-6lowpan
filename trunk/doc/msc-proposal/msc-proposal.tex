@@ -245,7 +245,7 @@ RFC 4944 \cite{rfc4944} defines stateless header compression mechanisms for IPv6
 \subsection{HC1 Header Encoding}
 The HC1 compression format does not use any shared context and compresses headers relying on information pertaining to the entire link. The following IPv6 header values are expected to be common on 6LoWPAN network: Version is IPv6; both IPv6 source and destination addresses are link local;  the IPv6 interface identifiers for the source or destination addresses can be inferred from the layer two source and destination addresses; the packet length can be inferred either from layer two or from the "datagram\_size" field in the fragment header; both the Traffic Class and the Flow Label are zero; and the Next Header is UDP, ICMP or TCP. The Hop Limit (8 bits) field is the only one that always needs to be carried. Using the HC1 encoding allows to compress a 40 byte IPv6 header to 2 bytes.
 
-The HC1 encoding uses a dispatch value of $000010$ to specify that the payload following the dispatch header, described in Section \ref{subsec:dispatch.header}, is a HC1 compressed IPv6 header. The HC1 header is 8 bits. Bits 0 and 1 specify the encoding for the IPv6 source prefix and interface identifier respectively: $0$ -- the field is carried in-line; $1$ -- link-local address is assumed. Bits 2 and 3 specify how the destination address is encoded (the same encoding as for the source address). If bit 4 is set then  Traffic Class and Flow Label fields are zero, otherwise their values are not compressed and carried in-line. Bits 5 and 6 indicate the Next Header: $00$ -- the field is not compressed and carried inlie, $01$ corresponds to UDP, $10$ -- ICMP, $11$ -- TCP. The last bit specifies whether HC1 header is immediately followed by more header compression bits of the HC2 encoding format.
+The HC1 encoding uses a dispatch value of $000010$ to specify that the payload following the dispatch header, described in Section \ref{subsec:dispatch.header}, is a HC1 compressed IPv6 header. The HC1 header is 8 bits. Bits 0 and 1 specify the encoding for the IPv6 source prefix and interface identifier respectively: $0$ -- the field is carried in-line; $1$ -- link-local address is assumed. Bits 2 and 3 specify how the destination address is encoded (the same encoding as for the source address). If bit 4 is set then  Traffic Class and Flow Label fields are zero, otherwise their values are not compressed and carried in-line. Bits 5 and 6 indicate the Next Header: $00$ -- the field is not compressed and carried in-line, $01$ corresponds to UDP, $10$ -- ICMP, $11$ -- TCP. The last bit specifies whether HC1 header is immediately followed by more header compression bits of the HC2 encoding format.
 
 By using this encoding an IPv6 header can be compressed to different degrees and only non-compressed fields need to be sent. The only field that is always present is the Hop Limit (8 bits). It follows the HC1 encoding fields. Other non-compressed fields follow the Hop Limit.
 
@@ -259,39 +259,93 @@ The non-compressed or partially compressed fields in the UDP header always follo
 \subsection{IPHC Header Encoding}
 The IPHC encoding format enables effective compression of the IPv6 header relying on information pertaining to the entire 6LoWPAN network. The encoding assumes the following common case parameters for 6LoWPAN communication: Version is $6$; Traffic Class and Flow Label are both zero; Payload Length can be inferred from lower layers from either the 6LoWPAN Fragmentation header or the IEEE 802.15.4 header; Hop Limit will be set to a well-known value by the source; addresses assigned to 6LoWPAN interfaces will be formed using the link-local prefix or a single routable prefix assigned to the entire 6LoWPAN network; addresses assigned to 6LoWPAN interfaces are formed with an IID derived directly from either the 64-bit extended or 16-bit short IEEE 802.15.4 addresses. The compression mechanism is adapted for these values of the header fields and in such scenario the LOWPAN IPHC can compress the IPv6 header down to two octets (1-octet dispatch, 1-octet LOWPAN\_IPHC encoding) with link-local communication.  When routing over multiple IP hops, IPHC can compress the IPv6 header down to 7 octets (1-octet dispatch, 1-octet IPHC encoding, 1-octet Hop Limit, 2-octet Source Address, and 2-octet Destination Address).  In this case, the Hop Limit may not be compressed because it needs to be decremented at each hop and stateful address compression is applied to the source and destination IPv6 addresses because they do not statelessly match the source and destination link layer addresses on intermediate hops.
 
-The IPv6 header encrypted with the IPHC encoding format, as shown in Figure \ref{fig:iphc.header}, consists of a 3 bit dispatch value, $110$, a 13 bit IPHC encoding, describing how the IPv6 header is compressed, followed by compressed IPv6 header fields. The IPHC encoding may be extended by another octet to support additional contexts.
+The IPv6 header encrypted with the IPHC encoding format, as shown in Figure \ref{fig:iphc.header}, consists of a 3 bit dispatch value, $110$, a 13 bit IPHC base encoding (shown in Figure \ref{fig:iphc.format}), describing how the IPv6 header is compressed, followed by compressed IPv6 header fields. The IPHC encoding may be extended by another octet to support additional contexts.
 
 \begin{figure}[htp]
 \begin{mylisting}
 \begin{verbatim}
-+------------------+---------------+------------------------+
-|    Dispatch      | IPHC encoding | Compressed IPv6 Header |
-| (3 bits - 110)   |   (13 bits)   |                        |
-+------------------+---------------+------------------------+
+    +------------------+---------------+------------------------+
+    |    Dispatch      | IPHC encoding | Compressed IPv6 Header |
+    | (3 bits - 110)   |   (13 bits)   |      Fields            |
+    +------------------+---------------+------------------------+
 \end{verbatim}
 \end{mylisting}
 \caption{IPHC Header}\label{fig:iphc.header}
 \end{figure}
 
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
+       0   1   2   3   4   5   6   7   8   9   0   1   2  
+     +---+---+---+---+---+---+---+---+---+---+---+---+---+
+     |  TF   |NH | HLIM  |CID|SAC|  SAM  | M |DAC|  DAM  |
+     +---+---+---+---+---+---+---+---+---+---+---+---+---+
+\end{verbatim}
+\end{mylisting}
+\caption{IPHC Base Encoding}\label{fig:iphc.format}
+\end{figure}
 
+\subsubsection{Traffic Class and  Flow Label Compression}
+The IPHC supports four compression formats of the Traffic Class and Flow Label (TF). The two bit TF field in the IPHC Base Encoding, shown in Figure \ref{fig:iphc.format}, indicates whether these fields are carried in-line in the compressed IPv6 header. The Traffic Class field in the IPv6 header comprises 6 bits of Differentiated Services Code Point (DSCP) Field \cite{rfc2474} and 2 bits of Explicit Congestion Notification (ECN) \cite{rfc3168}. 
 
+The TF field value $00$ indicates that the Traffic Class and Flow Label are carried in-line with additional 4 bits included to maintain byte-alignment. In this case, shown in Figure \ref{fig:tf.00}, Traffic Class and  Flow Label fields are represented by 4 octets in the IPv6 header. 
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
+                        1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |ECN|   DSCP    |  rsv  |             Flow Label                |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+\end{verbatim}
+\end{mylisting}
+\caption{ TF = 00: Traffic Class and Flow Label carried in-line.}\label{fig:tf.00}
+\end{figure}
+
+The TF value $01$ corresponds to the 3 byte encoding, shown in Figure \ref{fig:tf.01}, when ECN and Flow Label fields are carried in-line, but DSCP field is elided.
 
 \begin{figure}[htp]
 \begin{mylisting}
 \begin{verbatim}
-  0   1   2   3   4   5   6   7   8   9   0   1   2   3   4   5
-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
-| 0 | 1 | 1 |  TF   |NH | HLIM  |CID|SAC|  SAM  | M |DAC|  DAM  |
-+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+                          1                   2
+      0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+     |ECN|rsv|             Flow Label                |
+     +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 \end{verbatim}
 \end{mylisting}
-\caption{IPHC Encoding}\label{fig:iphc.enc}
+\caption{TF = 01: Flow Label carried in-line.}\label{fig:tf.01}
 \end{figure}
 
+When TF is $10$ the Flow Label is elided. In this case, shown in Figure \ref{fig:tf.10}, the Traffic Class and Flow Label fields are compressed down to 1 octet.
 
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
+                        0 1 2 3 4 5 6 7
+                       +-+-+-+-+-+-+-+-+
+                       |ECN|   DSCP    |
+                       +-+-+-+-+-+-+-+-+
+\end{verbatim}
+\end{mylisting}
+\caption{TF = 10: Traffic Class carried in-line.}\label{fig:tf.10}
+\end{figure}
 
+The TF value $00$ is used when Traffic Class and Flow Label are elided.           
 
-\subsection{NHC Header Encoding}
+\subsubsection{Next Header, Hop Limit and Context Identifier Extension}
+The Next Header (NH) field can be carried in-line, if NH field in the IPHC Base Encoding is set to $0$ (see Figure \ref{fig:iphc.format}), or, otherwise, compressed using NHC encoding, discussed in Section \ref{sec:nhc}.
+
+The IPHC encoding allows for compression of some commonly-used IPv6 Hop Limit (HLIM) values.  If the LoWPAN is a mesh-under stub, a Hop Limit of 1 for inbound and a default value such as 64 for outbound are usually enough for application layer data traffic.  Additionally, a hop-limit value of 255 is often used.  This encoding enables to compress the IPv6 Hop Limit field in those cases and they are identified by the HLIM field values $01$, $10$ and $11$ respectively in the IPHC Base Encoding (shown in Figure \ref{fig:iphc.format}). The value $00$ specifies that Hop Limit field is carried in-line.
+
+Stateful address compression expects that a conceptual context is shared between the node that compresses a packet and the node(s) that need to expand it.  However, the Internet Draft \cite{draft-hc-06} does not specify how the contexts are shared, maintained and what information is contained within a context. If the Context Identifier (CID) field (see Figure \ref{fig:iphc.format}) is set to 1 then an additional 8-bit Context Identifier Extension field is used and immediately follows the IPHC Base Encoding. This field identifies the pair of contexts used for the IPv6 source and destination address compression. The context identifiers are 4 bits long.
+
+\subsubsection{Source and Destination Addresses}
+The IPHC encoding supports both stateless and stateful context-based compressions. The stateless compression makes use of the link-local prefixes and link-local addresses (derivable from the corresponding link-layer address). The stateful address compression can be applied to the source and destination IPv6 addresses when they do not statelessly match the source and destination link layer addresses. The stateful compression relies on a conceptual context which is shared between nodes. The type of compression used is identified by the Source Address Compression (SAC) and Destination Address Compression (DAC) bits in the IPHC Base Encoding (see Figure \ref{fig:iphc.format}) for the source and destination addresses respectively. The value of 0 corresponds to stateless compression, otherwise the stateful compression is applied.
+
+The M bit in the IPHC Base Encoding (see Figure \ref{fig:iphc.format}) is set when the Destination address is a multicast address. The Source Address Mode (SAM) and Destination Address Mode (DAM) identify the used addressing schemes. The available schemes allow to carry the address in-line, to compress it down to either 64 bits or 16 bits, or to fully elide it.
+
+\subsection{NHC Header Encoding}\label{sec:nhc}
 
 \chapter{6LoWPAN Neighbor Discovery}
 
@@ -312,6 +366,8 @@ The IPv6 header encrypted with the IPHC encoding format, as shown in Figure \ref
 \nocite{rfc780}
 \nocite{rfc2460}
 \nocite{rfc2464}
+\nocite{rfc2474}
+\nocite{rfc3168}
 \nocite{rfc4291} 
 \nocite{rfc4443}
 \nocite{rfc4861}
