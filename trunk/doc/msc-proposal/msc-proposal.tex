@@ -256,8 +256,40 @@ The first $8$ bits of the HC\_UDP encoding specify how the UDP header is compres
 
 The non-compressed or partially compressed fields in the UDP header always follow the IPv6 header. All present UDP header in-line fields always appear in the same order as the corresponding fields appear in a normal UDP header \cite{rfc780}, e.g., source port, destination port, length, and checksum.
 
-
 \subsection{IPHC Header Encoding}
+The IPHC encoding format enables effective compression of the IPv6 header relying on information pertaining to the entire 6LoWPAN network. The encoding assumes the following common case parameters for 6LoWPAN communication: Version is $6$; Traffic Class and Flow Label are both zero; Payload Length can be inferred from lower layers from either the 6LoWPAN Fragmentation header or the IEEE 802.15.4 header; Hop Limit will be set to a well-known value by the source; addresses assigned to 6LoWPAN interfaces will be formed using the link-local prefix or a single routable prefix assigned to the entire 6LoWPAN network; addresses assigned to 6LoWPAN interfaces are formed with an IID derived directly from either the 64-bit extended or 16-bit short IEEE 802.15.4 addresses. The compression mechanism is adapted for these values of the header fields and in such scenario the LOWPAN IPHC can compress the IPv6 header down to two octets (1-octet dispatch, 1-octet LOWPAN\_IPHC encoding) with link-local communication.  When routing over multiple IP hops, IPHC can compress the IPv6 header down to 7 octets (1-octet dispatch, 1-octet IPHC encoding, 1-octet Hop Limit, 2-octet Source Address, and 2-octet Destination Address).  In this case, the Hop Limit may not be compressed because it needs to be decremented at each hop and stateful address compression is applied to the source and destination IPv6 addresses because they do not statelessly match the source and destination link layer addresses on intermediate hops.
+
+The IPv6 header encrypted with the IPHC encoding format, as shown in Figure \ref{fig:iphc.header}, consists of a 3 bit dispatch value, $110$, a 13 bit IPHC encoding, describing how the IPv6 header is compressed, followed by compressed IPv6 header fields. The IPHC encoding may be extended by another octet to support additional contexts.
+
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
++------------------+---------------+------------------------+
+|    Dispatch      | IPHC encoding | Compressed IPv6 Header |
+| (3 bits - 110)   |   (13 bits)   |                        |
++------------------+---------------+------------------------+
+\end{verbatim}
+\end{mylisting}
+\caption{IPHC Header}\label{fig:iphc.header}
+\end{figure}
+
+
+
+
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
+  0   1   2   3   4   5   6   7   8   9   0   1   2   3   4   5
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+| 0 | 1 | 1 |  TF   |NH | HLIM  |CID|SAC|  SAM  | M |DAC|  DAM  |
++---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+\end{verbatim}
+\end{mylisting}
+\caption{IPHC Encoding}\label{fig:iphc.enc}
+\end{figure}
+
+
+
 
 \subsection{NHC Header Encoding}
 
