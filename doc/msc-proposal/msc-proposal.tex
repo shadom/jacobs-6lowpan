@@ -259,7 +259,7 @@ The non-compressed or partially compressed fields in the UDP header always follo
 \subsection{IPHC Header Encoding}
 The IPHC encoding format enables effective compression of the IPv6 header relying on information pertaining to the entire 6LoWPAN network. The encoding assumes the following common case parameters for 6LoWPAN communication: Version is $6$; Traffic Class and Flow Label are both zero; Payload Length can be inferred from lower layers from either the 6LoWPAN Fragmentation header or the IEEE 802.15.4 header; Hop Limit will be set to a well-known value by the source; addresses assigned to 6LoWPAN interfaces will be formed using the link-local prefix or a single routable prefix assigned to the entire 6LoWPAN network; addresses assigned to 6LoWPAN interfaces are formed with an IID derived directly from either the 64-bit extended or 16-bit short IEEE 802.15.4 addresses. The compression mechanism is adapted for these values of the header fields and in such scenario the LOWPAN IPHC can compress the IPv6 header down to two octets (1-octet dispatch, 1-octet LOWPAN\_IPHC encoding) with link-local communication.  When routing over multiple IP hops, IPHC can compress the IPv6 header down to 7 octets (1-octet dispatch, 1-octet IPHC encoding, 1-octet Hop Limit, 2-octet Source Address, and 2-octet Destination Address).  In this case, the Hop Limit may not be compressed because it needs to be decremented at each hop and stateful address compression is applied to the source and destination IPv6 addresses because they do not statelessly match the source and destination link layer addresses on intermediate hops.
 
-The IPv6 header encrypted with the IPHC encoding format, as shown in Figure \ref{fig:iphc.header}, consists of a 3 bit dispatch value, $110$, a 13 bit IPHC base encoding (shown in Figure \ref{fig:iphc.format}), describing how the IPv6 header is compressed, followed by compressed IPv6 header fields. The IPHC encoding may be extended by another octet to support additional contexts.
+The IPv6 header encrypted with the IPHC encoding format, as shown in Figure \ref{fig:iphc.header}, consists of a 3 bit dispatch value, $110$ and a 13 bit IPHC base encoding (shown in Figure \ref{fig:iphc.format}), describing how the IPv6 header is compressed, followed by compressed IPv6 header fields. The IPHC encoding may be extended by another octet to support additional contexts.
 
 \begin{figure}[htp]
 \begin{mylisting}
@@ -346,6 +346,25 @@ The IPHC encoding supports both stateless and stateful context-based compression
 The M bit in the IPHC Base Encoding (see Figure \ref{fig:iphc.format}) is set when the Destination address is a multicast address. The Source Address Mode (SAM) and Destination Address Mode (DAM) identify the used addressing schemes. The available schemes allow to carry the address in-line, to compress it down to either 64 bits or 16 bits, or to fully elide it.
 
 \subsection{NHC Header Encoding}\label{sec:nhc}
+The Next Header field in the IPHC encoding indicates whether the following header is compressed using NHC format.  If so, the compressed IPv6 header is immediately followed by the NHC encoding. In contrast to HC2, the NHC encoding provides a flexible and extensible mechanism for arbitrary header compression, and not only for UDP, TCP, and ICMPv6. Compression formats for different next headers are identified by a variable-length bit-pattern immediately following the IPHC compressed header. 
+
+\subsubsection{IPv6 Extension Header Compression}
+The NHC encoding for IPv6 Extension Headers is composed of a single octet followed by the IPv6 Extension Header.  IPv6 Extension Headers use  $1110$ bit pattern as the first 4 bits in the NHC encoding. The latter 3 bits is an IPv6 Extension Header ID (EID) which identifies the IPv6 Extension Header immediately following the NHC octet. Currently, the following values of the EID field have been specified:  $0$ -- IPv6 Hop-by-Hop Options Header \cite{rfc2460}; $1$ -- IPv6 Routing Header \cite{rfc2460};  $2$ -- IPv6 Fragment Header \cite{rfc2460}; $3$ -- IPv6 Destination Options Header \cite{rfc2460}; $4$ -- IPv6 Mobility Header \cite{rfc3775}; $5$ -- Reserved; $6$ -- Reserved; $7$ -- IPv6 Header. The last bit of the NHC encoding indicates whether the NHC compression is used for the following header.
+   
+\subsubsection{UDP Header Compression}
+   Using NHC, this document defines a compression mechanism for
+   UDP.  While [RFC4944] defines a compression mechanism for UDP, that
+   mechanism does not enable checksum compression when rendered possible
+   by additional upper layer mechanisms such as upper layer Message
+   Integrity Check (MIC).  This specification adds the capability to
+   elide the UDP checksum over the LoWPAN, which enables to save an
+   additional pair of octets.
+
+   Also using NHC, this document defines encoding formats for
+   IPv6-in-IPv6 encapsulation as well as IPv6 Extension Headers.  With
+   HC1 and HC2, chains of next headers can not be encoded
+   efficiently.
+
 
 \chapter{6LoWPAN Neighbor Discovery}
 
@@ -368,6 +387,7 @@ The M bit in the IPHC Base Encoding (see Figure \ref{fig:iphc.format}) is set wh
 \nocite{rfc2464}
 \nocite{rfc2474}
 \nocite{rfc3168}
+\nocite{rfc3775}
 \nocite{rfc4291} 
 \nocite{rfc4443}
 \nocite{rfc4861}
