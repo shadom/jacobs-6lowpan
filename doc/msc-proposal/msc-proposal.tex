@@ -249,10 +249,10 @@ The HC1 encoding uses a dispatch value of $000010$ to specify that the payload f
 
 By using this encoding an IPv6 header can be compressed to different degrees and only non-compressed fields need to be sent. The only field that is always present is the Hop Limit (8 bits). It follows the HC1 encoding fields. Other non-compressed fields follow the Hop Limit.
 
-\subsection{HC\_UDP Header Encoding}
+\subsection{HC\_UDP Header Encoding}\label{sec:udp.header.enc}
 The HC\_UDP encoding is used for compression of a UDP header. It is applied only if bits $5$ and $6$ in HC1 specify that the protocol that follows the IPv6 header is UDP and bit 7 indicates that the HC2 encoding is used. The HC\_UDP encoding allows to compress the UDP header to 4 octets instead of the original 8 octets.
 
-The first $8$ bits of the HC\_UDP encoding specify how the UDP header is compressed. Both the source and destination port fields may be compressed to $4$ bits. It is indicated by bits $0$ and $1$ of the HC\_UDP encoding for the source and destination ports respectively. In such case, the actual $16$-bit port is obtained by calculating $61616$ + short port value, which is a $4$ bit value carried in-line. If bit $2$ of the HC\_UDP encoding is set then the UDP length header field is computed from IPv6 header length information, otherwise it's carried in-line. HC\_UDP encoding bits 3-7 are reserved for future use. The UDP header's checksum field is not compressed and is therefore carried in full.
+The first $8$ bits of the HC\_UDP encoding specify how the UDP header is compressed. Both the source and destination port fields may be compressed to $4$ bits. It is indicated by bits $0$ and $1$ of the HC\_UDP encoding for the source and destination ports respectively. In such case, the actual $16$-bit port is obtained by calculating $61616$ + short port value, which is a $4$ bit value carried in-line. If bit $2$ of the HC\_UDP encoding is set then the UDP length header field is computed from IPv6 header length information, otherwise it's carried in-line. HC\_UDP encoding bits 3-7 are reserved for future use. The UDP header's checksum field is not compressed and, therefore, carried in full.
 
 The non-compressed or partially compressed fields in the UDP header always follow the IPv6 header. All present UDP header in-line fields always appear in the same order as the corresponding fields appear in a normal UDP header \cite{rfc780}, e.g., source port, destination port, length, and checksum.
 
@@ -346,25 +346,42 @@ The IPHC encoding supports both stateless and stateful context-based compression
 The M bit in the IPHC Base Encoding (see Figure \ref{fig:iphc.format}) is set when the Destination address is a multicast address. The Source Address Mode (SAM) and Destination Address Mode (DAM) identify the used addressing schemes. The available schemes allow to carry the address in-line, to compress it down to either 64 bits or 16 bits, or to fully elide it.
 
 \subsection{NHC Header Encoding}\label{sec:nhc}
-The Next Header field in the IPHC encoding indicates whether the following header is compressed using NHC format.  If so, the compressed IPv6 header is immediately followed by the NHC encoding. In contrast to HC2, the NHC encoding provides a flexible and extensible mechanism for arbitrary header compression, and not only for UDP, TCP, and ICMPv6. Compression formats for different next headers are identified by a variable-length bit-pattern immediately following the IPHC compressed header. 
+The Next Header field in the IPHC encoding indicates whether the following header is compressed using NHC format.  If so, the compressed IPv6 header is immediately followed by the NHC encoding. In contrast to HC2, the NHC encoding provides a flexible and extensible mechanism for arbitrary header compression, not only for UDP, TCP, and ICMPv6. With NHC, chains of next headers can be encoded efficiently, which is not possible with HC1 and HC2. NHC compression formats for different next headers are identified by a variable-length bit-pattern immediately following the IPHC compressed header. 
 
 \subsubsection{IPv6 Extension Header Compression}
-The NHC encoding for IPv6 Extension Headers is composed of a single octet followed by the IPv6 Extension Header.  IPv6 Extension Headers use  $1110$ bit pattern as the first 4 bits in the NHC encoding. The latter 3 bits is an IPv6 Extension Header ID (EID) which identifies the IPv6 Extension Header immediately following the NHC octet. Currently, the following values of the EID field have been specified:  $0$ -- IPv6 Hop-by-Hop Options Header \cite{rfc2460}; $1$ -- IPv6 Routing Header \cite{rfc2460};  $2$ -- IPv6 Fragment Header \cite{rfc2460}; $3$ -- IPv6 Destination Options Header \cite{rfc2460}; $4$ -- IPv6 Mobility Header \cite{rfc3775}; $5$ -- Reserved; $6$ -- Reserved; $7$ -- IPv6 Header. The last bit of the NHC encoding indicates whether the NHC compression is used for the following header.
-   
+The NHC encoding for IPv6 Extension Headers (shown in Figure \ref{fig:ipv6.ext.header}) is composed of a single octet followed by the IPv6 Extension Header.  IPv6 Extension Headers use  $1110$ bit pattern as bits $0$ through $3$ in the NHC encoding. The latter 3 bits represent an IPv6 Extension Header ID (EID) which identifies the IPv6 Extension Header immediately following the NHC octet. Currently, the following values of the EID field have been specified:  $0$ -- IPv6 Hop-by-Hop Options Header \cite{rfc2460}; $1$ -- IPv6 Routing Header \cite{rfc2460};  $2$ -- IPv6 Fragment Header \cite{rfc2460}; $3$ -- IPv6 Destination Options Header \cite{rfc2460}; $4$ -- IPv6 Mobility Header \cite{rfc3775}; $5$ -- Reserved; $6$ -- Reserved; $7$ -- IPv6 Header. The last bit of the NHC encoding indicates whether the NHC compression is used for the following header.
+
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
+                0   1   2   3   4   5   6   7
+              +---+---+---+---+---+---+---+---+
+              | 1 | 1 | 1 | 0 |    EID    |NH |
+              +---+---+---+---+---+---+---+---+
+\end{verbatim}
+\end{mylisting}
+\caption{IPv6 Extension Header Encoding}\label{fig:ipv6.ext.header}
+\end{figure}
+
+  
 \subsubsection{UDP Header Compression}
-   Using NHC, this document defines a compression mechanism for
-   UDP.  While [RFC4944] defines a compression mechanism for UDP, that
-   mechanism does not enable checksum compression when rendered possible
-   by additional upper layer mechanisms such as upper layer Message
-   Integrity Check (MIC).  This specification adds the capability to
-   elide the UDP checksum over the LoWPAN, which enables to save an
-   additional pair of octets.
+The NHC format, shown in Figure \ref{fig:udp.header.enc}, provides a compression mechanism for a UDP header.  Bits $0$ through $4$ of the encoding are the NHC ID and the value $11110$ indicates the UDP header compression encoding.
 
-   Also using NHC, this document defines encoding formats for
-   IPv6-in-IPv6 encapsulation as well as IPv6 Extension Headers.  With
-   HC1 and HC2, chains of next headers can not be encoded
-   efficiently.
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
+                0   1   2   3   4   5   6   7
+              +---+---+---+---+---+---+---+---+
+              | 1 | 1 | 1 | 1 | 0 | C |   P   |
+              +---+---+---+---+---+---+---+---+
+\end{verbatim}
+\end{mylisting}
+\caption{UDP Header Encoding}\label{fig:udp.header.enc}
+\end{figure}
 
+The UDP Length field is always elided and inferred from lower layers. If the upper layer protocol provides message integrity check, the Checksum field may be elided from the UDP header. Such behaviour is enabled by the compression format and when C bit is set the Checksum is not included into the UDP header.
+
+This format also allows to compress down well-known ports (0xF0Bx).	When the P field has the value $01$, all 16 bits for the Source Port are carried in-line, whereas first 8 bits of the Destination Port is 0xF0 and elided, and the latest 8 bits are carried in-line. The value $10$ of the P field indicates that all 16 bits for the Destination Port are carried in-line and the Source Port is encoded in the same way as the Destination port in the previous case. If the P field is $11$, first 12 bits of both the Source Port and the Destination Port are 0xF0B and elided. The remaining 4 bits for each are carried in-line. In case of both ports are carried in-line, is $00$. Fields carried in-line appear in the same order as they do in the UDP header format.  
 
 \chapter{6LoWPAN Neighbor Discovery}
 
