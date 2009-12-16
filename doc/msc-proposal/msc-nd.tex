@@ -1,8 +1,25 @@
 \chapter{6LoWPAN Neighbor Discovery Protocol}\label{ch:nd}
-The Neighbor Discovery (ND) protocol for IPv6 \cite{rfc4861} provides for basic bootstrapping and network operation. Nodes (hosts and routers) use ND to determine the link-layer addresses for neighbors known to reside on attached links. Hosts also use ND to find neighboring routers that are willing to forward packets. In the previous Chapter \ref{ch:6lowpan} a mechanism which allows to carry IPv6 packets over IEEE 802.15.4 networks with the help of an adaptation layer has been described. However, the standard IPv6 Neighbor Discovery has several problems when using it with 6LoWPANs. IPv6 ND heavily uses multicast capabilities, whereas it is very expensive and not desirable in a low-power, lossy wireless network. Therefore, the classic ND is not suitable for 6LoWPANs. The Internet Draft \cite{draft-nd-07} specifies an optimized neighbor discovery mechanism sufficient for LoWPAN operation. This chapter describes the 6LoWPAN ND protocol.
+The Neighbor Discovery (ND) protocol for IPv6 \cite{rfc4861} provides for basic bootstrapping and network operation. Nodes use ND to determine the link-layer addresses for neighbors known to reside on attached links. ND also allows to find neighboring routers that are willing to forward packets. However, the standard IPv6 Neighbor Discovery has several problems when using it with 6LoWPANs. IPv6 ND heavily uses multicast capabilities, whereas it is very expensive and not desirable in a low-power, lossy wireless network. Moreover, in a Route Over configuration LoWPAN links are non-transitive and composed of a large amount of overlapping radio ranges, but the classic ND was not designed for non-transitive links. Therefore, the classic ND is not suitable for 6LoWPANs. The Internet Draft \cite{draft-nd-07} specifies an optimized neighbor discovery mechanism sufficient for LoWPAN operation. The 6LoWPAN Neighbor Discovery (6LoWPAN-ND) supports both the Mesh Under and Route Over routing solutions for multihop forwarding. This chapter describes the 6LoWPAN-ND protocol.
 
-\section{Basic features}\label{nd.basic}
-6LoWPAN Neighbor Discovery (6LoWPAN-ND) introduces a node registration mechanism optimizing the node-router interface.  This mechanism requires no flooding and reduces link-local multicast frequency. Nodes in the LoWPAN register with Routers and Edge Routers (IPv6 routers that interconnect the LoWPAN to another IP network), creating state about nodes attached to that router (binding table) and about all IPv6 addresses in the LoWPAN. A list of all IPv6 addresses in the LoWPAN are stored within a conceptual data structure, Whiteboard, located at Edge Routers (ERs). The Whiteboard makes use of soft bindings that contain an Owner Interface Identifier, Owner Nonce, IPv6 address and a remaining lifetime of the binding. Nodes send periodic registration messages in order to maintain their bindings in the Router binding tables and Edge Router Whiteboard. 
+\section{Basics}\label{nd.basic}
+A 6LoWPAN network comprises nodes which are either hosts or routers. A host is a node that only sources or sinks IPv6 datagrams, whereas a router forwards datagrams between arbitrary source-destination pairs. Routers are present only in a Route Over configuration, where the network is composed of overlapping link-local scopes, to overcome non-transitive nature of links. 6LoWPAN-ND also introduces a notion of Edge Routers that interconnect the LoWPAN to another IP network. 
+
+
+6LoWPAN-ND introduces a node registration mechanism optimizing the node-router interface.  This mechanism requires no flooding and reduces link-local multicast frequency. Nodes in the LoWPAN register with Routers and Edge Routers, creating state about nodes attached to that router and about all IPv6 addresses in the LoWPAN. 
+
+(binding table) \\
+Routers only in the Route Over\\
+(IPv6 routers that interconnect the LoWPAN to another IP network)\\
+
+A list of all IPv6 addresses in the LoWPAN are stored within a conceptual data structure, Whiteboard, located at Edge Routers (ERs). The Whiteboard makes use of soft bindings that contain an Owner Interface Identifier, Owner Nonce, IPv6 address and a remaining lifetime of the binding. Nodes send periodic registration messages in order to maintain their bindings in the Router binding tables and Edge Router Whiteboard. 
+
+* Hosts;\\
+* Routers;\\
+* Edge Routers;\\
+* Simple ER; \\
+* Extended ER;
+
+\section{Message Formats}
 
 6LoWPAN-ND makes use of Router Solicitation (RS)/Router Advertisement (RA) message exchanges similar to classic ND. In 6LoWPAN-ND RA messages may carry additional options for context dissemination and are reduced in size. In addition to RS and RA messages, 6LoWPAN-ND defines two new ICMP packet types: Node Registration (NR), which is sent by a node to an Edge Router to register a binding for an IPv6 address in the Whiteboard, and Node Confirmation (NC) by which an Edge Router replies to the registering node. 
 
