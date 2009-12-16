@@ -117,14 +117,16 @@ using symmetric-key cryptography to protect transmitted frames. However, key man
 %%
 %	Transmission of IPv6 Packets
 %%
-\chapter{6LoWPAN Networks}
+\chapter{6LoWPAN Networks}\label{ch:6lowpan}
 A low-power wireless personal area network (LoWPAN) is a simple low throughput wireless network comprising low cost and low power devices that conform to the IEEE 802.15.4-2003 standard. The IEEE 802.15.4-2003 standard specifies node-to-node frame delivery between the devices which are within reachable distance from each other. On top of IEEE 802.15.4 a network layer (layer 3 of the seven-layer OSI model) has to be defined that would provide end-to-end packet delivery including routing through intermediate hosts. 
 
 %The Internet Protocol (IP) is the most widely deployed network layer protocol. Internet Protocol Version 4 (IPv4) is still the dominant protocol of the Internet, although the successor, Internet Protocol Version 6 (IPv6) \cite{rfc2460} is being deployed actively worldwide. The application of IP technologies to LoWPANs would provide a number of benefits. IP-based technologies are well-known and proven which allows to use the existing infrastructure. IP-based devices can be easily connected to other IP-based networks. Today there exist a lot of ready-to-use tools for diagnostics and management of IP networks.
 
-6lowpan (IPv6 over Low power Wireless Personal Area Networks) is a working group within the IETF concerned with the specification of mechanisms to allow IPv6 packets to be sent to and received from over IEEE 802.15.4 based networks. The working group has already completed two documents: \cite{rfc4919} that documents and discusses the problem statement and \cite{rfc4944} that defines the format for the adaptation between IPv6 and 802.15.4. The latter document describes the frame format for transmission of IPv6 packets and the method of forming IPv6 link-local addresses and statelessly autoconfigured addresses on IEEE 802.15.4 networks.
+6lowpan (Internet Protocol Version 6 (IPv6) over Low power Wireless Personal Area Networks) is a working group within the IETF concerned with the specification of mechanisms to allow IPv6 packets to be sent to and received from over IEEE 802.15.4 based networks. The working group has already completed two documents: \cite{rfc4919} that documents and discusses the problem statement and \cite{rfc4944} that defines the format for the adaptation between IPv6 and 802.15.4. The latter document describes the frame format for transmission of IPv6 packets and the method of forming IPv6 link-local addresses and statelessly autoconfigured addresses on IEEE 802.15.4 networks.
 
-As described in Chapter \ref{ch:ieee802.15.4}, IEEE 802.15.4 defines four types of frames: beacon frames, MAC command frames, acknowledgement frames, and data frames.  IPv6 packets are carried on data frames.  Data frames may optionally request acknowledgments to aid link-layer recovery.
+%As described in Chapter \ref{ch:ieee802.15.4}, IEEE 802.15.4 defines four types of frames: beacon frames, MAC command frames, acknowledgement frames, and data frames.  IPv6 packets are carried on data frames.  Data frames may optionally request acknowledgments to aid link-layer recovery.
+
+This chapter describes the Adaptation Layer and Header Compression Formats that have been introduced to allow the transmission of IPv6 packets over 802.15.4 links.
 
 \section{Addressing}
 IEEE 802.15.4 defines addresses of two types: IEEE 64-bit extended addresses or 16-bit short addresses unique within the PAN. Both types are supported by 6LoWPAN. 
@@ -236,7 +238,7 @@ Broadcast is an additional mesh routing functionality. For that a broadcast head
 The broadcast header consists of a dispatch type \texttt{01010000} followed by a sequence number field, which is used to detect duplicate packets.
 This field is incremented by the originator whenever it sends a new mesh broadcast or multicast packet.
 
-\section{Header Compression}
+\section{Header Compression}\label{sec:hc}
 As described in Section \ref{sec:adapt.layer}, 81 octets are left in a IEEE 802.15.4 frame for IPv6. The IPv6 header is 40 octets long which leaves only 41 octets for upper-layer protocols, like UDP.  The latter uses 8 octets in the header, which leaves 33 octets for application data. 
 The fragmentation and reassembly layer, described in Section \ref{sec:adapt.layer}, will also use at least one additional octet, what makes header compression almost being unavoidable.  
 
@@ -383,13 +385,22 @@ The UDP Length field is always elided and inferred from lower layers. If the upp
 
 This format also allows to compress down well-known ports (0xF0Bx).	When the P field has the value $01$, all 16 bits for the Source Port are carried in-line, whereas first 8 bits of the Destination Port is 0xF0 and elided, and the latest 8 bits are carried in-line. The value $10$ of the P field indicates that all 16 bits for the Destination Port are carried in-line and the Source Port is encoded in the same way as the Destination port in the previous case. If the P field is $11$, first 12 bits of both the Source Port and the Destination Port are 0xF0B and elided. The remaining 4 bits for each are carried in-line. In case of both ports are carried in-line, is $00$. Fields carried in-line appear in the same order as they do in the UDP header format.  
 
-\chapter{6LoWPAN Neighbor Discovery}
+\chapter{Neighbor Discovery Protocol}\label{ch:nd}
+The Neighbor Discovery (ND) protocol for IPv6 \cite{rfc4861} provides for basic bootstrapping and network operation. Nodes (hosts and routers) use ND to determine the link-layer addresses for neighbors known to reside on attached links. Hosts also use ND to find neighboring routers that are willing to forward packets. In the previous Chapter \ref{ch:6lowpan} a mechanism which allows to carry IPv6 packets over IEEE 802.15.4 networks with the help of an adaptation layer has been described. However, the standard IPv6 Neighbor Discovery has several problems when using it with 6LoWPANs. IPv6 ND heavily uses multicast capabilities, whereas it is very expensive and not desirable in a low-power, lossy wireless network. Therefore, the classic ND is not suitable for 6LoWPANs. The Internet Draft \cite{draft-nd-07} specifies a Neighbor Discovery mechanism optimized for LoWPAN networks. This chapter describes the 6LoWPAN ND protocol.
+
+\section{Overview}\label{Overview}
+6LoWPAN Neighbor Discovery (6LoWPAN-ND) provides an optimized neighbor discovery mechanism sufficient for LoWPAN operation. 6LoWPAN-ND introduces a node registration mechanism optimizing the node-router interface.  This mechanism requires no flooding and reduces link-local multicast frequency. Nodes in the LoWPAN register with Routers and Edge Routers (IPv6 routers that interconnect the LoWPAN to another IP network), creating state about nodes attached to that router (binding table) and about all IPv6 addresses in the LoWPAN. This state information is stored within a conceptual data structure, Whiteboard, located at Edge Routers (ERs). The Whiteboard makes use of soft bindings that contain an Owner Interface Identifier, Owner Nonce, IPv6 address and a remaining lifetime of the binding. Nodes send periodic registration messages in order to maintain their bindings. The detection of duplicate addresses (DAD) is performed across the entire LoWPAN using a lookup on the Whiteboard using the node registration mechanism.
+
+6LoWPAN-ND makes use of Router Solicitation (RS) / Router Advertisement (RA) message exchanges similar to classic ND. In 6LoWPAN-ND RA messages may carry additional options for context dissemination and are reduced in size. In addition to RS and RA messages, 6LoWPAN-ND defines two new ICMP packet types: Node Registration (NR), which is sent by a node to an Edge Router to register a binding for an IPv6 address in the Whiteboard, and Node Confirmation (NC) by which an Edge Router replies to the registering node. 
+
+
+
 
 %%
 %	Conclusion
 %%
-\chapter*{Conclusion}
-\addcontentsline{toc}{chapter}{Conclusion}
+\chapter*{Proposed work}
+\addcontentsline{toc}{chapter}{Proposed work}
 
 % Bibliography
 \newpage
@@ -413,6 +424,6 @@ This format also allows to compress down well-known ports (0xF0Bx).	When the P f
 \nocite{rfc4944} 
 \nocite{draft-usecases-05} 
 \nocite{draft-hc-06} 
-\nocite{draft-nd-06}
+\nocite{draft-nd-07}
 
 \end{document}
