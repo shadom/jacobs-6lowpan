@@ -57,7 +57,7 @@ In order to register for the first time, the node sends an NR message to the lin
 The message format for NR/NC messages is shown in Figure \ref{fig:nr.nc.format}. The values for the Type field will be defined in the future to distinguish Node Registration and Node Confirmation messages. The Status field is used only in NC messages and specifies the result of the registation procedure. A 4-bit unsigned Code provides additional details for the message, e.g. it may indicate whether the NR/NC is sent directly or relayed by a router. The Checksum field carries the ICMP checksum. A unique Transaction ID (TID) is used to match replies and a NC TID corresponds to the NR TID. Its value is incremented upon each new registration. A 1-bit Primary flag (P) indicates whether the ER is primary and may represent the node on the backbone in a Extended LoWPAN. A Router flag indicates the role of the node sending the NR message (0 is used by hosts and 1 by routers).  The Reserved field is unused and initialized to zero. The Binding Lifetime is the amount of time in minutes remaining before the binding of the owner interface identifier expires. The Advertising Lifetime field indicates the amount of time in units of 10 seconds the node will advertise itself to its local router using a NR local refresh. The Owner Nonce field is a 32-bit value generated randomly by the node upon booting.
 And the Owner Interface Identifier (OII) is a globally unique identifier for the requesting host's interface.
 
-A NR message includes a 6LoWPAN  Address Option, described in Section \ref{nd.option.address}, for each address the host wants to bind for the interface, and a NC message may carry a 6LoWPAN Information Option, described in Section \ref{nd.option.info}, containing information about the prefixes of the LoWPAN along with other context information.
+A NR message includes a 6LoWPAN  Address Option, described in Section \ref{nd.option.address}, for each address the host wants to bind for the interface, and a NC message may carry a 6LoWPAN Information Option, described in Section \ref{nd.option.info}.
 
 \begin{figure}[htp]
 \begin{mylisting}
@@ -84,12 +84,17 @@ A NR message includes a 6LoWPAN  Address Option, described in Section \ref{nd.op
 \caption{Node Registration/Confirmation message format}\label{fig:nr.nc.format}
 \end{figure}
 
-
 \subsection{Message Options}
+The 6LoWPAN-ND introduces four new message options described in this section.
+
 \subsubsection{6LoWPAN Address Option}\label{nd.option.address}
+The 6LoWPAN Address Option (6AO) is used in NR and NC messages to indicate the address which a node wants to register with an ER and to get the result of registration back. A NR/NC message can include multiple Address Options. The fields of the option allow to indicate the success or failure of the binding in an NC, as well as to compress the carried IPv6 address to different extent. 
 
 \subsubsection{6LoWPAN Information Option}\label{nd.option.info}
+The 6LoWPAN Information Option (6IO) is used to carry prefix information. A RA message includes one Information Option for each listed prefix.  The option also allows to disseminate contexts used in 6LoWPAN address compression and identified by a Context Identifier (CID).
 
 \subsubsection{6LoWPAN Summary Option}\label{nd.option.summary}
+The 6LoWPAN Summary Option (6SO) associates the current prefix options with a sequence number. It allows prefix options themselves to be sent only periodically in unsolicited RAs, reducing the message size. When the sequence number of this option has a new value, then the prefix information has likely changed, and, in this case, a node requests the prefix information with an RS. An RA sent in response to a unicast RS always includes the full set of prefix information.
 
 \subsubsection{Owner Interface Identifier Option}\label{sec:nd.oiio}
+The Owner Interface Identifier Option (OIIO) is used with classic NS and NA messages between ERs over a backbone link to identify bindings and whiteboard entries.
