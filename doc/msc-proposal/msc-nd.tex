@@ -104,12 +104,12 @@ The Owner Interface Identifier Option (OIIO) is used with classic NS and NA mess
 Every node in a LoWPAN keeps a list of prefixes advertised in Router Advertisements. The entries of the list are associated with the sequence numbers last advertised in the 6LoWPAN Summary Option, which allows to detect the changes in prefix information. In order to support stateful address compression, a node holds a list of context. As in the case of prefixes, each context entry is associated with the 6LoWPAN Summary Option sequence number. The list of Edge Routers the node is registered with an associated timeout and primary flag is stored within the Edge Router List. 
 The Default Router List data structure contains the routers to which packets may be forwarded from the node. 
 
-In addition to the mentioned data structures, a node also keeps a set of conceptual variables for each interface, such as the default hop limit and the binding lifetime.
+In addition to the mentioned data structures, a node also keeps a set of conceptual variables for each interface, e.g. the default hop limit and the binding lifetime.
 
 \subsection{LoWPAN Router}
 LoWPAN Routers are used only in a route over configuration. In addition to the classic ND conceptual variables defined in Section 6.2.1 of \cite{rfc4861}, routers maintain binding tables with the information about nodes that are currently registered through them. A binding table entry  contains the registered node's OII, link-local IPv6 address and the advertisement interval from the last NR.
 
 \subsection{LoWPAN Edge Router}
-Edge Routers implement LoWPAN Router features and extend them with Whiteboard registration for LoWPAN Nodes within their subnets. For every registered node an ER maintains the IPv6 address, Owner Interface Identifier, . There is no link-layer information stored in the Whiteboard. In an Extended LoWPAN the full registry of all the LoWPAN Nodes in a subnet is distributed between the Edge Routers.
+Edge Routers implement LoWPAN Router features and extend them with Whiteboard registration for LoWPAN Nodes within their subnets. An ER maintains information about every registered node, e.g. the IPv6 address and Owner Interface Identifier of the node. There is no link-layer information stored in the Whiteboard. In an Extended LoWPAN the full registry of all the LoWPAN Nodes in a subnet is distributed between the Edge Routers.
 
 

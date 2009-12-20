@@ -1,4 +1,42 @@
 \chapter{6LoWPAN Routing}\label{ch:routing}
-Neither the IEEE 802.15.4 \cite{ieee802.15.4} standard nor the 6LoWPAN format specification \cite{rfc4944} define how mesh topologies could be obtained and maintained. In 6LoWPAN routing can be performed either in the IP-layer, using a route over approach, or in the adaptation layer, described in Section \ref{subsec:mesh.header}, using the mesh under approach. The mesh under approach performs the multi-hop communication below the IP link and therefore a 6LoWPAN is seen as a single IP link. 
+Neither the IEEE 802.15.4 \cite{ieee802.15.4} standard nor the 6LoWPAN format specification \cite{rfc4944} define how mesh topologies could be obtained and maintained. In 6LoWPAN routing can be performed either in the IP-layer, using a route over approach, or in the adaptation layer, described in Section \ref{subsec:mesh.header}, using the mesh under approach. The mesh under configuration performs the multi-hop routing below the IP link and therefore the characteristics of IEEE 802.15.4 directly affect the 6LoWPAN routing mechanisms. In this approach a 6LoWPAN is seen as a single IP link and the IPv6 link-local scope covers all nodes in the LoWPAN. In the route over configuration intermediate nodes become LoWPAN Routers and perform standard Layer 3 (IP) routing. Therefore, in this case the link-local scope includes the set of nodes within symmetric radio range of a node and routing can be accomplished over various types of interconnected links.
 
-A 6LoWPAN network comprises nodes which are either hosts or routers. A host is a node that only sources or sinks IPv6 datagrams, whereas a router forwards datagrams between arbitrary source-destination pairs. Routers are present only in a route over configuration, where the network is composed of overlapping link-local scopes, to overcome non-transitive nature of links. 
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
+  +-----------------------------+    +-----------------------------+
+  |  Application Layer          |    |  Application Layer          |
+  +-----------------------------+    +-----------------------------+
+  |  Transport Layer (TCP/UDP)  |    |  Transport Layer (TCP/UDP)  |
+  +-----------------------------+    +-----------------------------+
+  |  Network Layer (IPv6)       |    |  Network       +---------+  |
+  +-----------------------------+    |  Layer         | Routing |  |
+  |  6LoWPAN       +---------+  |    |  (IPv6)        +---------+  |
+  |  Adaptation    | Routing*|  |    +-----------------------------+
+  |  Layer         +---------+  |    |  6LoWPAN Adaptation Layer   |
+  +-----------------------------+    +-----------------------------+
+  |  IEEE 802.15.4 (MAC)        |    |  IEEE 802.15.4 (MAC)        |
+  +-----------------------------+    +-----------------------------+
+  |  IEEE 802.15.4 (PHY)        |    |  IEEE 802.15.4 (PHY)        |
+  +-----------------------------+    +-----------------------------+
+\end{verbatim}
+\end{mylisting}
+\caption{Mesh Under (left) and Route Over routing (right)}\label{fig:routing}
+\end{figure}
+
+This chapter discusses a list of requirements for 6LoWPAN routing \cite{draft-routing-04} in Section \ref{sec:rout.req}. Section \ref{sec:rout.rpl} describes the Internet Draft \cite{draft-rpl-04} which specifies the IPv6 Routing Protocol for Low power and Lossy networks (LLNs).
+
+\section{6LoWPAN Routing Requirements}\label{sec:rout.req}
+A LoWPAN has to support multiple device types and roles such as host nodes drawing their power from primary batteries, mains-powered nodes and power-affluent gateways. Battery-operated devices need to last from several months to a few years with a single AA battery. Therefore 6LoWPAN routing protocols have to cause minimal power consumption by the efficient use of control packets, minimization of expensive IP multicast which causes link broadcast to the entire LoWPAN, and by the efficient routing of data packets. Control messages have to fit a single IEEE 802.15.4 frame size in order to avoid packet fragmentation and the overhead for reassembly. The design of 6LoWPAN routing protocols should be scalable to support from a few nodes to millions of them.
+
+6LoWPAN devices are unreliable due to limited system capabilities and unpredictable environment where they can be deployed. 6LoWPAN routing protocols have to be robust to dynamic loss caused by link failure or device unavailability. Moreover, some of the links may be asymmetric, when the probability of successful transmission between two nodes is significantly higher in one direction than in the other one. 6LoWPAN routing protocols have to be designed to correctly operate in the presence of such links.  In addition, latency and successful end-to-end packet delivery ratio requirements of applications must be taken into account.
+
+6LoWPAN devices have small memory sizes, therefore 6LoWPAN routing protocols require implementation with small code size and low routing state to fit the typical 6LoWPAN node capacity. The code size is limited to available flash memory size, and the routing table is bounded by RAM size. 
+
+\section{Existing Routing Protocols}
+
+\section{Routing Protocol for Low power and Lossy networks}\label{sec:rout.rpl}
+The ROLL WG is now working on route over approaches for Low power and Lossy Networks (LLNs), not specifically for 6LoWPAN. 
+\subsection{Routing Metrics}
+Historically, IGP such as OSPF ([RFC2328]) and IS-IS ([RFC1195]) have used quantitative static link metric
+
