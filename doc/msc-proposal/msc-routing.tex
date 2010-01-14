@@ -37,6 +37,33 @@ A LoWPAN has to support multiple device types and roles such as host nodes drawi
 6LoWPAN devices have small memory sizes, therefore 6LoWPAN routing protocols require implementation with small code size and low routing state to fit the typical 6LoWPAN node capacity. The code size is limited to available flash memory size, and the routing table is bounded by RAM size. 
 
 \section{Existing Routing Protocols}\label{sec:rout.protocols}
+The internet draft \cite{draft-protocols-07} provides a survey of the strengths and weaknesses of existing routing protocols with respect to the 6LoWPAN routing requirements. The survey examines whether existing and mature IETF protocols can meet LLN requirements without modifications. The list of considered protocols is OSPF \cite{rfc2328}, IS-IS \cite{rfc1142}, RIP \cite{rfc2453}, OLSR \cite{rfc3626}, OLSv2 \cite{draft-manet-olsrv2}, TBRPF \cite{rfc3684}, AODV \cite{rfc3561}, DYMO \cite{draft-manet-dymo}, and DSR \cite{rfc4728}. 
+
+The survey uses five criteria derived from a set of requirements for routing in low power and lossy networks:  routing state, loss response, control cost, link cost, and node cost. The routing state criterion indicates whether routing state scales reasonably within the memory resources of low-power nodes. Routing state that scales linearly with the size of the network or a node's neighbourhood fails and passes if scales with the number of destinations. The loss response indicates whether the protocol localizes responses to link failures with no triggering of global network re-optimization. Protocols which require many link changes to propagate across the entire network fail. The control cost criterion defines constraints on control traffic, in order to discover a topology. The link and node cost specify how a protocol chooses routes for data packets to take through the network. A protocol passes these criteria if it provides a mechanism allowing link and node properties to be considered when choosing routes.
+
+Table \ref{table:routing.prot.survey} summarizes the survey showing which of existing protocols meet the criteria described above. The detailed analysis is given in \cite{draft-protocols-07}. For each of these criteria, the value "pass" indicates that a protocol has satisfactory performance.  The value "fail" corresponds to not acceptable performance, which means that the protocol does not meet the criterion. Finally, a "?" means that a protocol would require a supplementary document specifying how a protocol should behave. As can be seen from the table, no existing IETF protocol meets the described criteria. Therefore, the survey concludes that a new protocol specification documents have to be defined for a LLN routing protocol.
+
+
+\begin{table}[htp]
+\begin{center}
+        \begin{tabular}{|l|c|c|c|c|c|}
+          \hline
+          Protocol   &   State &  Loss & Control &  Link Cost & Node Cost\\
+          \hline
+          \hline
+     OSPF/IS-IS  &  fail  &  fail  &  fail   &   pass    &   fail\\
+     OLSRv2      &  fail  &   ?    &   ?     &   pass    &   pass\\
+     TBRPF       &  fail  &  pass  &  fail   &   pass    &    ?\\
+     RIP         &  pass  &  fail  &  pass   &    ?      &   fail\\
+     AODV        &  pass  &  fail  &  pass   &   fail    &   fail\\
+     DYMO        &  pass  &   ?    &  pass   &    ?      &    ?\\
+     DSR         &  fail  &  pass  &  pass   &   fail    &   fail\\
+          \hline
+        \end{tabular}
+\end{center}
+\caption{Routing protocol survey results}\label{table:routing.prot.survey}
+\end{table}
+
 
 \section{Routing Protocol for Low power and Lossy networks}\label{sec:rout.rpl}
 
