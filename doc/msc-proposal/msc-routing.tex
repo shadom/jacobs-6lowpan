@@ -67,7 +67,16 @@ Table \ref{table:routing.prot.survey} summarizes the survey showing which of exi
 
 \section{IPv6 Routing Protocol for Low power and Lossy Networks}\label{sec:rout.rpl}
 \subsection{Terminology}
-The IPv6 Routing Protocol for Low power and Lossy Networks (RPL) introduces a notion of a Directed Acyclic Graph (DAG), which is a directed graph with no cycles exist. All edges of a DAG are oriented toward and terminating at one or more root nodes. A Destination Oriented DAG (DODAG) is a DAG rooted at a single destination, which is a node with no outgoing edges.  Each root has a unique identifier, the DAGID. While constructing a DODAG various routing metrics and optimization objectives can be used, which are defined by Objective Function (OF) \cite{draft-routing-metrics-04}.  The Objective Code Point (OCP) is used to indicate which OF is in use in a DODAG. A DAG Instance is a set of possibly multiple DODAGs. Each DAG instance constructs a routing topology optimized for a certain OF. A DAG Instance is uniquely identified by InstanceID. A network may have more than one DAG Instance. Each of them operates independently. 
+The IPv6 Routing Protocol for Low power and Lossy Networks (RPL) introduces a notion of a Directed Acyclic Graph (DAG), which is a directed graph with no cycles exist. All edges of a DAG are oriented toward and terminating at one or more root nodes. A Destination Oriented DAG (DODAG) is a DAG rooted at a single destination, which is a node with no outgoing edges.  Each root has a unique identifier, the DAGID. While constructing a DODAG various routing metrics and optimization objectives can be used, which are defined by Objective Function (OF) \cite{draft-routing-metrics-04}.  The Objective Code Point (OCP) is used to indicate which OF is in use in a DODAG. A DAG Instance is a set of possibly multiple DODAGs. A DAG Instance is uniquely identified by InstanceID. 
+
+\subsection{RPL Model}
+Each DAG instance constructs a routing topology optimized for a certain OF. Traffic that belongs to a specific DODAG Instance is marked in the flow label of the IPv6 header. A network may have more than one DAG Instance which operate independently. Applications may tag traffic to follow an appropriate DAG instance, i.e., optimized for low latency or low energy.  
+
+RPL nodes construct and maintain DODAGs via exchange of DAG Information Object (DIO) messages. A DIO message identifies the DAG Instance, the DAGID, and the values used to compute the DAG Instance's objective function. The DIO also includes a measure derived from the position of the node within the DODAG, the rank, used to determine its position relative to each other and to avoid loops. The rate at which DIO messages are sent varies depending on the state of the DODAG. When a DODAG is detected to be inconsistent, the RPL sends DIO messages more frequently, and, otherwise, when the DODAG is in a stable state.
+
+
+
+\subsection{Messages}
 
 \subsection{Routing Metrics}
 Historically, IGP such as OSPF ([RFC2328]) and IS-IS ([RFC1195]) have used quantitative static link metric
