@@ -66,18 +66,12 @@ Table \ref{table:routing.prot.survey} summarizes the survey showing which of exi
 
 
 \section{IPv6 Routing Protocol for Low power and Lossy Networks}\label{sec:rout.rpl}
-\subsection{Terminology}
-The IPv6 Routing Protocol for Low power and Lossy Networks (RPL) introduces a notion of a Directed Acyclic Graph (DAG), which is a directed graph with no cycles exist. All edges of a DAG are oriented toward and terminating at one or more root nodes. A Destination Oriented DAG (DODAG) is a DAG rooted at a single destination, which is a node with no outgoing edges.  Each root has a unique identifier, the DAGID. While constructing a DODAG various routing metrics and optimization objectives can be used, which are defined by Objective Function (OF) \cite{draft-routing-metrics-04}.  The Objective Code Point (OCP) is used to indicate which OF is in use in a DODAG. A DAG Instance is a set of possibly multiple DODAGs. A DAG Instance is uniquely identified by InstanceID. 
+The IPv6 Routing Protocol for Low power and Lossy Networks (RPL) introduces a notion of a Directed Acyclic Graph (DAG), which is a directed graph with no cycles exist. All edges of a DAG are oriented toward and terminating at one or more root nodes uniquely identified by the DAGID. A Destination Oriented DAG (DODAG) is a DAG rooted at a single destination. While constructing a DODAG various routing metrics and optimization objectives can be used to compute the shortest paths. The set of supported link and node metrics used in the RPL is specified in the internet draft \cite{draft-routing-metrics-04}. 
 
-\subsection{Model}
-Each DAG instance constructs a routing topology optimized for a certain OF. Traffic that belongs to a specific DODAG Instance is marked in the flow label of the IPv6 header. A network may have more than one DAG Instance which operate independently. Applications may tag traffic to follow an appropriate DAG instance, i.e., optimized for low latency or low energy.  
-
-RPL nodes construct and maintain DODAGs via exchange of DAG Information Object (DIO) messages. A DIO message identifies the DAG Instance, the DAGID, and the values used to compute the DAG Instance's objective function. The DIO also includes a measure derived from the position of the node within the DODAG, the rank, used to determine its position relative to each other and to avoid loops. The rate at which DIO messages are sent varies depending on the state of the DODAG. When a DODAG is detected to be inconsistent, the RPL sends DIO messages more frequently, and, otherwise, when the DODAG is in a stable state.
-
-
+A DAG instance is a set of possibly multiple DODAGs. The routing metrics and objectives for a certain DAG instance are specified by an Objective Function (OF). Each DAG instance constructs a routing topology optimized for its OF. Traffic that belongs to a specific DODAG instance is marked in the flow label of the IPv6 header. A network may have more than one DAG instance which operate independently. This allows to applications to tag traffic to follow an appropriate DAG instance, i.e., optimized for low latency or low energy.  
 
 \subsection{Messages}
-The draft \cite{draft-rpl-04} defines the RPL Control Message, which is a new ICMPv6 message. The format of this message is shown in Figure \ref{fig:rpl.control.message}.
+The protocol defines the RPL Control Message, which is a new ICMPv6 message. The format of this message is shown in Figure \ref{fig:rpl.control.message}.
 \begin{figure}[htp]
 \begin{mylisting}
 \begin{verbatim}
@@ -94,8 +88,21 @@ The draft \cite{draft-rpl-04} defines the RPL Control Message, which is a new IC
 \caption{RPL Control Message}\label{fig:rpl.control.message}
 \end{figure}
 
-The Type for the RPL Control message has the value of 155. The Code identifies the RPL Control Messages as follows:  0x01 -- DAG Information Solicitation; 0x02: DAG Information Object; 0x04: Destination Advertisement Object. The DAG Information Solicitation (DIS) message is used to solicit a DAG Information Object from a RPL node. The DAG Information Object carries a number of metrics and other information that allows a node to discover a DAG Instance, select its DAG parents, and avoid loops. The Destination Advertisement Object (DAO) is used to propagate destination information upwards along the DODAG. The format of these messages is specified in the internet draft \cite{draft-rpl-04}.
+The Type for the RPL Control message has the value of 155. The Code identifies the RPL Control Messages as follows:  0x01 -- DAG Information Solicitation; 0x02: DAG Information Object; 0x04: Destination Advertisement Object. 
 
-\subsection{Routing Metrics}
-Historically, IGP such as OSPF ([RFC2328]) and IS-IS ([RFC1195]) have used quantitative static link metric
+DAG Information Object (DIO) message exchanges are used by RPL nodes to construct and maintain DODAGs. A DIO message identifies the DAG instance, the DAGID, and the values used to compute the DAG instance's objective function. The DIO also includes a measure derived from the location of the node within the DODAG, the rank, used to determine its position relative to other nodes and avoid loops. The exact calculation of the rank is left to the Objective Function and  depends on parents of the node. The DAG Information Solicitation (DIS) message is used to solicit a DAG Information Object from a RPL node. 
+
+DIO messages allow to establish upward routes, i.e., the routes in the direction from leaf nodes towards DODAG roots.  In order to establish downward routes, Destination Advertisement Object (DAO) messages are used. The DAO propagates destination information upwards along the DODAG and includes prefix information to identify destinations. Nodes that are capable to maintain routing state may aggregate routes from DAO messages that they receive before transmitting them. Nodes that are not capable to maintain routing state attaches a next-hop address to the Reverse Route Stack contained within the DAO message. The Reverse Route Stack contains piecewise routes over regions of the LLN that are incapable of storing routing state.
+
+The detailed format of the messages is specified in the internet draft \cite{draft-rpl-04}.
+
+\subsection{Basic Operation}
+A node's neighbor set is the nodes that it can reach with a link-local multicast. A node that is not a DODAG root may maintain multiple DAG parents for a single DAG instance. DAG parents of a node is a subset of the set of       its neighbors. A node may implement different policies for selecting its DAG parents. 
+
+DAG discovery allows a node to join a DODAG by discovering neighbors that are members of the DODAG.  Some nodes are preconfigured to be DODAG roots. Each node maintains a timer that governs when to advertise node presence by sending link-local multicast DIO messages. The rate at which DIO messages are sent varies in response to stability or detection of routing inconsistencies. Nodes listen for DIOs and use their information to join a new DODAG, or to maintain an existing DODAG, according to the specified Objective Function. DODAG discovery may avoid loops by constraining how and when nodes can increase their rank.
+
+
+
+
+
 
