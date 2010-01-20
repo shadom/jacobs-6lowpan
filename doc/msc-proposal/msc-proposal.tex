@@ -94,11 +94,12 @@ IEEE 802.15.4 is a standard which specifies the physical layer and media access 
 %   Introduction
 %%
 \chapter{Introduction}
-* There are a lot of applications where we need many small devices + examples; why it's important;
-* LoWPAN\\
-* The purpose of the proposed work will be to investigate something. The proposal describes problems associated with enabling IP communication with devices in a LoWPAN.\\
-* As preparation for this work, several related areas have been studied in more
-depth and the collected background information; Structure of the proposal.\\
+A low-power wireless personal area network (LoWPAN) is a simple low cost communication network that allows wireless connectivity in applications with limited power and relaxed throughput requirements. LoWPANs conform to the IEEE 802.15.4 standard \cite{ieee802.15.4} and typically include devices limited in their computational power, memory, and energy availability. Such networks can benefit from IP and, in particular, IPv6 networking. IP-based devices can be easily connected to other IP-based networks by reusing existing infrastructure. However, due to limited nature of IEEE 802.15.4 devices the IPv6 protocol \cite{rfc2460} needs to be adapted for its use in LoWPANs.  Devices within LoWPANs are expected to be deployed in exceedingly large numbers. Furthermore, they are expected to have limited display and input capabilities. This makes network management functionality critical for LoWPANs. However, deployment of the IP infrastructure in 802.15.4 networks allows to reuse existing protocols. The Simple Network Management Protocol (SNMP) is a widely deployed application protocol for network management and data retrieval. SNMP is datagram-oriented and the implementations of SNMP can be very lightweight.  It may fit LoWPAN applications very well.
+
+The purpose of the proposed work will be to investigate whether the SNMP functionality may be reused "as is" in LoWPANs. The implementation and evaluation of the SNMP protocol for devices supporting IEEE 802.15.4 and the Contiki Embedded Operating System \cite{contiki} will be accomplished. 
+
+As preparation for this work, several related areas have been studied in more depth to collect background information. The rest of the document is organised in six chapters. Chapter \ref{ch:ieee802.15.4} provides an introduction to the IEEE 802.15.4 standard. Chapter \ref{ch:6lowpan} describes the adaptation layer that allows the transmission of IPv6 packets over 802.15.4 links. In Chapter \ref{ch:routing} 6LoWPAN routing problems are discussed. The 6LoWPAN Neighbor Discovery Protocol is covered in Chapter \ref{ch:nd}. Chapter \ref{ch:snmp} gives an overview of the Simple Network Management Protocol. Chapter \ref{ch:proposal} describes details of the proposed work to be done in the scope of the Master Thesis.
+
 
 \chapter{IEEE 802.15.4}\label{ch:ieee802.15.4}
 The IEEE 802.15.4 standard developed by the 802.15.4 Task Group within the IEEE specifies the physical layer and media access control for low-rate wireless personal area networks providing node-to-node frame delivery between devices within reachable distance from each other. The standard is targeted at low cost, low speed and low power consumption devices. Several versions of the standard have been published, such as 802.15.4-2003 \cite{ieee802.15.4}, 802.15.4-2006 \cite{ieee802.15.4-2006}, 802.15.4a-2007 \cite{ieee802.15.4a-2007}, 802.15.4c-2009 \cite{ieee802.15.4c-2009} and 802.15.4d-2009 \cite{ieee802.15.4d-2009} . This chapter provides an overview of the IEEE 802.15.4 standard.
@@ -417,10 +418,13 @@ This format also allows to compress down well-known ports (0xF0Bx). When the P f
 
 \input{msc-routing}
 
-\input{msc-nd} %%
+\input{msc-nd} 
+
+\input{msc-snmp} %%
+%%
 %   Conclusion
 %%
-\chapter*{Proposed work}
+\chapter{Proposed work}\label{ch:proposal}
 \addcontentsline{toc}{chapter}{Proposed work}
 
 % Bibliography
@@ -451,5 +455,9 @@ This format also allows to compress down well-known ports (0xF0Bx). When the P f
 \nocite{draft-protocols-07}
 \nocite{draft-rpl-04}
 \nocite{draft-routing-metrics-04}
-
+\nocite{rfc1157}
+\nocite{rfc1901}
+\nocite{rfc1908}
+\nocite{rfc3411}
+\nocite{rfc3418}
 \end{document}
