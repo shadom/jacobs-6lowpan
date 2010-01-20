@@ -425,7 +425,11 @@ This format also allows to compress down well-known ports (0xF0Bx). When the P f
 %   Conclusion
 %%
 \chapter{Proposed work}\label{ch:proposal}
-\addcontentsline{toc}{chapter}{Proposed work}
+
+The proposed Master Thesis is aimed at investigating whether the SNMP protocol may be reused "as is" in 802.15.4 networks. For this purpose, its implementation and evaluation for devices supporting IEEE 802.15.4 and running the Contiki Embedded Operating System \cite{contiki} will be accomplished. The target hardware platform will be the AVR Raven board which has a 2.4 GHz transceiver and uses an 8-bit ATmega1284P micro-controller with 16KB of RAM and 128KB of flash memory. The implementation will be done on top of Contiki 6LoWPAN implementation.
+
+The work will be accomplished over several phases. In the first phase, the basic SNMPv1 protocol will be implemented. In the second phase, the required security primitives will be addressed and implemented, in case there will not be available ready-to-use solutions. Finally, a security layer will be added to the SNMP implementation.
+
 
 % Bibliography
 \newpage
