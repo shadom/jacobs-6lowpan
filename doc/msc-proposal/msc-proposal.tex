@@ -426,9 +426,24 @@ This format also allows to compress down well-known ports (0xF0Bx). When the P f
 %%
 \chapter{Proposed work}\label{ch:proposal}
 
-The proposed Master Thesis is aimed at investigating whether the SNMP protocol may be reused "as is" in 802.15.4 networks. For this purpose, its implementation and evaluation for devices supporting IEEE 802.15.4 and running the Contiki Embedded Operating System \cite{contiki} will be accomplished. The target hardware platform will be the AVR Raven board which has a 2.4 GHz transceiver and uses an 8-bit ATmega1284P micro-controller with 16KB of RAM and 128KB of flash memory. The implementation will be done on top of Contiki 6LoWPAN implementation.
+The proposed Master Thesis is aimed at investigating whether the SNMP protocol may be reused "as is" in 802.15.4 networks. For this purpose, its implementation and evaluation for devices supporting IEEE 802.15.4 and running the Contiki Embedded Operating System \cite{contiki} will be accomplished. The target hardware platform will be the AVR Raven board which has a 2.4 GHz transceiver and uses an 8-bit ATmega1284P micro-controller with 16KB of RAM and 128KB of flash memory. The implementation will be done on top of the Contiki 6LoWPAN implementation.
 
-The work will be accomplished over several phases. In the first phase, the basic SNMPv1 protocol will be implemented. In the second phase, the required security primitives will be addressed and implemented, in case there will not be available ready-to-use solutions. Finally, a security layer will be added to the SNMP implementation.
+The work will be accomplished over several phases. In the first phase, the basic SNMPv1 protocol will be implemented. Then, the focus will be shifted to creation of a secure network layer for Contiki. Finally, a security layer will be added to the SNMPv1 implementation.
+
+%Network Management: One of the points of transmitting IPv6
+%       packets is to reuse existing protocols as much as possible.
+%       Network management functionality is critical for LoWPANs.
+%       However, management solutions need to meet the resource
+%       constraints as well as the minimal configuration and self-healing
+%       functionality described in Section 4.4. The Simple Network
+%       Management Protocol (SNMP) [RFC3410] is widely used for
+%       monitoring data sources and sensors in conventional networks.
+%       SNMP functionality may be translated "as is" to LoWPANs with the
+%       benefit to utilize existing tools.  However, due to the memory,
+%       processing, and message size constraints, further investigation
+%       is required to determine if the use of SNMPv3 is suitable, or if
+%       an appropriate adaptation of SNMPv3 or use of different protocols
+%       is in order.
 
 
 % Bibliography
