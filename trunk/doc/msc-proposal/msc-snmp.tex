@@ -5,20 +5,18 @@ Currently, there are three versions of SNMP defined. The first version (SNMPv1) 
 
 The SNMP protocol is datagram-oriented and its implementation can be very lightweight \cite{draft-6lowpan-snmp}. It can fit resource-constrained devices very well. This makes it a perfect candidate as a management protocol for 6LoWPAN applications. In this chapter an overview of the SNMP protocol is given.
 
-\section{SNMP Concepts}
-* SNMPv1 and SNMPv2 have two kinds of entities: managers and agents.
-
-* SNMPv3 makes a big change to the basic concepts and abandons the notion of managers and agents, both are now called SNMP entities. 
-
-\section{The Structure of Management Information (SMI)}
-
-\section{Management Information Base}
-
 \section{Protocol Architecture}
+The SNMP protocol consists of four basic components: an entity which provides remote access to management instrumentation (typically called as an agent); an entity running management applications (typically called a manager); a management protocol to convey management information between the entities; and management information.
 
-\subsection{SNMPv3 Engine}
+According to the SNMP architecture \cite{rfc3411}, an SNMP entity consists of an SNMP engine and one or more associated applications.
 
-\subsection{The SNMPv3 Applications}
+\begin{figure}	
+\begin{center}
+    \includegraphics[scale = 0.6]{img/snmp-arch.pdf}
+    \caption{Structure of an SNMP entity}   
+	\label{fig:snmparch}
+\end{center}
+\end{figure}
 
 \section{SNMP Operations}
 
