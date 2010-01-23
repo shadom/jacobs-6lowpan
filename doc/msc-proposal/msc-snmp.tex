@@ -6,11 +6,9 @@ Currently, there are three versions of SNMP defined. The first version (SNMPv1) 
 The SNMP protocol is datagram-oriented and its implementation can be very lightweight \cite{draft-6lowpan-snmp}. It can fit resource-constrained devices very well. This makes it a perfect candidate as a management protocol for 6LoWPAN applications. In this chapter an overview of the SNMP protocol is given.
 
 \section{Protocol Architecture}
-The SNMP protocol consists of four basic components: an entity which provides remote access to management instrumentation (typically called as an agent); an entity running management applications (typically called a manager); a management protocol to convey management information between the entities; and management information.
+The SNMP protocol is designed to have a modular architecture, which allows the evolution of the protocol and enables protocol extensions. The architecture includes several subsystems communicating via defined abstract service interfaces. Abstract service interfaces describe the conceptual interfaces between various subsystems.  While the subsystems can be changed and extended over time, the interfaces are fixed.
 
-According to the SNMP architecture \cite{rfc3411}, an SNMP entity consists of an SNMP engine and one or more associated applications.
-
-\begin{figure}	
+\begin{figure}[htp]	
 \begin{center}
     \includegraphics[scale = 0.6]{img/snmp-arch.pdf}
     \caption{Structure of an SNMP entity}   
@@ -18,7 +16,12 @@ According to the SNMP architecture \cite{rfc3411}, an SNMP entity consists of an
 \end{center}
 \end{figure}
 
-\section{SNMP Operations}
+According to the SNMP architecture defined in \cite{rfc3411}, an SNMP entity consists of an SNMP engine and one or more associated applications. The SNMP engine contains  a dispatcher, a message processing subsystem, a security subsystem, an access control subsystem, and a transport subsystem (Figure \ref{fig:snmparch}). Each subsystem may include multiple concrete models implementing different services. The dispatcher is responsible for controlling the data flow within an SNMP entity. Extracting data from received messages and preparing messages for sending are accomplished in the message processing subsystem. Each message processing model defines the format of a particular version of an SNMP message. Typically, the message processing subsystem supports three models for SNMPv1, SNMPv2c, and SNMPv3. The security subsystem provides security services such as authentication and privacy of messages. Authorization services are provided by the access control subsystem. The transport subsystem \cite{rfc5590} allows for multiple transport protocols to be used.
+
+There are several types of defined applications (Figure \ref{fig:snmparch}), such as a command generator which monitor and manipulate management data, a command responder providing access to management data, a notification originator initiating asynchronous messages, a notification receiver processing these messages, and a proxy forwarder which forwards messages between entities. Applications may use the services provided by the SNMP engine. An SNMP entity which includes one or more command generator and notification receiver applications is called an SNMP manager. An entity containing one or more command generator and notification receiver applications is called an SNMP manager.
+
+
+\section{Operations}
 
 \section{Security Models}
 
