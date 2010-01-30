@@ -5,6 +5,9 @@ Currently, there are three versions of SNMP defined. The first version (SNMPv1) 
 
 The SNMP protocol is datagram-oriented and its implementation can be very lightweight \cite{draft-6lowpan-snmp}. It can fit resource-constrained devices very well. This makes it a perfect candidate as a management protocol for 6LoWPAN applications. In this chapter an overview of the SNMPv3 protocol is given.
 
+\section{Management Information Base}
+SNMP itself does not specify which information is offered by a managed system. Management information which can be accessed via SNMP is viewed as a collection of managed objects in a virtual information store, called the Management Information Base (MIB). MIBs describe the structure of the device's management information using a hierarchical namespace containing object identifiers (OID). Each OID identifies a variable that can be read or set via SNMP. Collections of related objects are defined in MIB modules written in the Structure of Management Information (SMI) data definition language, which is an adapted subset of the Abstract Syntax Notation One (ASN.1) language. A number of specific MIBs has been defined as part of the SNMP suite specifying managed objects for the most common network management subjects.
+
 \section{Protocol Architecture}
 The SNMP protocol is designed to have a modular architecture, which allows the evolution of the protocol and enables protocol extensions. The protocol architecture is composed of an SNMP engine and applications. An SNMP entity is an implementation of this architecture. The SNMP engine includes several subsystems communicating via defined abstract service interfaces. Abstract service interfaces describe the conceptual interfaces between various subsystems.  While the subsystems can be changed and extended over time, the interfaces are fixed.
 
@@ -18,14 +21,14 @@ The SNMP protocol is designed to have a modular architecture, which allows the e
 
 According to the SNMP architecture defined in \cite{rfc3411}, the SNMP engine is composed of a dispatcher, a message processing subsystem, a security subsystem, an access control subsystem, and a transport subsystem (Figure \ref{fig:snmparch}). Each subsystem may include multiple concrete models implementing different services. The dispatcher is the key part of an SNMP engine. It's responsible for controlling the data flow within an SNMP entity. When an SNMP message needs to be prepared or when data needs to be extracted from an SNMP message, the dispatcher delegates these tasks to a version-specific message processing model within the message processing subsystem. It also dispatches SNMP  protocol data units (PDUs) to SNMP applications. Each message processing model defines the format of a particular version of an SNMP message. Typically, the message processing subsystem supports three models for SNMPv1, SNMPv2c, and SNMPv3. The security subsystem provides security services such as authentication and privacy of messages. Authorization services are provided by the access control subsystem. The transport subsystem \cite{rfc5590} allows for multiple transport protocols to be used.
 
-There are several types of defined applications (Figure \ref{fig:snmparch}), such as a command generator which monitor and manipulate management data, a command responder providing access to management data, a notification originator initiating asynchronous messages, a notification receiver processing these messages, and a proxy forwarder which forwards messages between entities. Applications may use the services provided by the SNMP engine. An SNMP entity which includes one or more command generator and notification receiver applications is called an SNMP manager. An entity containing one or more command generator and notification receiver applications is called an SNMP manager.
+There are several types of defined applications (Figure \ref{fig:snmparch}), such as a command generator which monitor and manipulate management data, a command responder providing access to management data, a notification originator initiating asynchronous messages, a notification receiver processing these messages, and a proxy forwarder which forwards messages between entities. Applications may use the services provided by the SNMP engine. An SNMP entity which includes one or more command generator and notification receiver applications is called an SNMP manager. An SNMP entity containing one or more command responder and notification originator applications is called an SNMP agent.
 
 \section{Message Format}\label{sec:messformat}
 The SNMPv3 message (Figure \ref{fig:snmp-format}) contains the SNMP version, fields for global data (such as the message identifier, the maximum message size, the security model and the level of security), fields for the security model information and naming scope (context identifier and name), and finally the protocol data unit (PDU).
 \begin{figure}[htp]	
 \begin{center}
     \includegraphics[scale = 0.60]{img/snmpv3-message.pdf}
-    \caption{SNMPv3 message format}   
+    \caption{SNMPv3 Message Format}   
 	\label{fig:snmp-format}
 \end{center}
 \end{figure}
@@ -34,10 +37,31 @@ The SNMP Version field identifies the version of the message processing. The mes
 
 The naming scope contains a PDU and the context in which it has to be processed. The context engineID identifies the engine which realizes the managed objects referenced within the PDU, and the context name defines the particular context associated with the management information contained in the PDU of the message. These fields are followed by the PDU data.
 
-\section{Protocol Operations}
-As described in Section \ref{sec:messformat}, an SNMP message encapsulates a PDU which specifies the operations performed by the receiving SNMP engine. The SNMP protocol defines PDUs for the following operations: Get, GetNext, GetBulk, Response, Set, Trap, Inform.
+The common format of protocol data units is shown in Figure \ref{fig:snmp-pdu}. This format is used for all operations described in Section \ref{sec:opetations}, except for the GetBulk request. The PDU Type field has an integer value which identifies the type of the PDU. The Request Identifier is used to match requests with replies. It is generated by the device that sends a request and copied into this field in a response PDU by the responding SNMP entity. The Error Status tells the requesting SNMP entity the result of its request. A value of zero indicates that no error occurred; the other values indicate what sort of error happened. When Error Status is non-zero, the Error Index field points to the object generated the error, and has the value of zero in a request. The variable bindings is a set of name-value pairs identifying the MIB objects in the PDU, and in the case of messages other than requests, containing their values.
+\begin{figure}[htp]	
+\begin{center}
+    \includegraphics[scale = 0.60]{img/snmp-pdu.pdf}
+    \caption{SNMP Common PDU Format}   
+	\label{fig:snmp-pdu}
+\end{center}
+\end{figure}
 
-In addition, the Report protocol operation can be used internally to allow SNMP engines to communicate with each other for error notifications and clock synchronization.
+
+\section{Protocol Operations}\label{sec:opetations}
+As described in Section \ref{sec:messformat}, an SNMP message encapsulates a PDU which specifies the operations performed by the receiving SNMP engine. The SNMP protocol defines PDU formats for the following operations: Get, GetNext, GetBulk, Response, Set, Trap, Inform and Report (Figure \ref{fig:snmp-operations}). 
+
+\begin{figure}[htp]	
+\begin{center}
+	\label{fig:snmp-operations}
+    \includegraphics[scale = 0.80]{img/snmp-operations.pdf}
+    \caption{SNMP Operations}   
+\end{center}
+\end{figure}
+
+
+The Get request is initiated by a manager. Upon receipt of the Get request, the agent processes each variable binding in the variable-binding list and produces a Response.
+
+The Report protocol operation can be used internally to allow SNMP engines to communicate with each other for error notifications and clock synchronization.
 
 
 
