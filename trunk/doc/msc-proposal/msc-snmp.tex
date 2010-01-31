@@ -48,7 +48,7 @@ The common format of protocol data units is shown in Figure \ref{fig:snmp-pdu}. 
 
 
 \section{Protocol Operations}\label{sec:opetations}
-As described in Section \ref{sec:messformat}, an SNMP message encapsulates a PDU which specifies the operations performed by the receiving SNMP engine. The SNMP protocol defines PDU formats for the following operations: Get, GetNext, GetBulk, Response, Set, Trap, Inform and Report (Figure \ref{fig:snmp-operations}). 
+As described in Section \ref{sec:messformat}, an SNMP message encapsulates a PDU which specifies the operations performed by the receiving SNMP engine. The SNMP protocol defines PDU formats for the following operations: \texttt{Get}, \texttt{GetNext}, \texttt{GetBulk}, \texttt{Response}, \texttt{Set}, \texttt{Trap}, \texttt{Inform} and \texttt{Report} (Figure \ref{fig:snmp-operations}). 
 
 \begin{figure}[htp]	
 \begin{center}
@@ -59,11 +59,17 @@ As described in Section \ref{sec:messformat}, an SNMP message encapsulates a PDU
 \end{figure}
 
 
-The Get request initiated by a manager allows to access and retrieve the value of one or more instances of management information. The agent processes each variable binding in the variable-binding list of the received Get PDU by resolving their values and produces a Response PDU. The response PDU is sent back to the manager. If the processing of any variable binding fails the details of the error are reflected in the the error status and error index fields in the Response PDU. The GetNext operation retrieves the value of the next existing MIB instances in lexicographic order. Successive GetNext operations can be used to walk the MIB instances without prior knowledge about the MIB structure. The GetBulk operation is a generalization of the GetNext operation where the agent performs a series of GetNext operations internally. This makes it easier to acquire large amounts of related information without initiating repeated GetNext operations. The manager can set values for the managed objects by using the Set operation.
+The \texttt{Get} request initiated by a manager allows to access and retrieve the value of one or more instances of management information. The agent processes each variable binding in the variable-binding list of the received \texttt{Get} PDU by resolving their values and produces a \texttt{Response} PDU. The \texttt{Response} PDU is sent back to the manager. If the processing of any variable binding fails the details of the error are reflected in the the error status and error index fields in the \texttt{Response} PDU. The \texttt{GetNext} operation retrieves the value of the next existing MIB instances in lexicographic order. Successive \texttt{GetNext} operations can be used to walk the MIB instances without prior knowledge about the MIB structure. The \texttt{GetBulk} operation is a generalization of the \texttt{GetNext} operation where the agent performs a series of \texttt{GetNext} operations internally. This makes it easier to acquire large amounts of related information without initiating repeated \texttt{GetNext} operations. The manager can set values for the managed objects by using the \texttt{Set} operation.
 
-The Trap is sent by an agent to a manager and indicates that an event has occurred or a certain condition is present. There is no confirmation associated with this notification delivery mechanism. The confirmed notification delivery mechanism is provided by the Inform operation. Finally, the Report operation can be used internally to allow SNMP engines to communicate with each other for error notifications and clock synchronization.
-
-
+The \texttt{Trap} is sent by an agent to a manager and indicates that an event has occurred or a certain condition is present. There is no confirmation associated with this notification delivery mechanism. The confirmed notification delivery mechanism is provided by the \texttt{Inform} operation. Finally, the \texttt{Report} operation can be used internally to allow SNMP engines to communicate with each other for error notifications and clock synchronization.
 
 \section{Security Models}
+SNMPv1 and SNMPv2c  provide only trivial security based on a clear-text community string and lack of adequate mechanisms for securing the management function. The security problems are addressed in SNMPv3 where the User-based Security Model (USM) \cite{rfc3414} is defined that implements the security services for authentication and privacy. The USM provides three levels of security:
+\begin{enumerate}
+\item[1)] \texttt{noAuthNoPriv} mode provides no authentication and no encryption services.
+\item[2)] \texttt{authNoPriv} mode provides message authentication, message integrity, and timeliness checking services but no encryption.
+\item[3)] \texttt{authPriv} mode message provides authentication, message integrity, timeliness checking services and encryption of the payload.
+\end{enumerate} 
+
+The document \cite{rfc5591} introduces a Transport Security Model for the SNMP protocol that makes use of existing and commonly deployed security infrastructures and Transport Models providing lower-layer, secure transports. 
 
