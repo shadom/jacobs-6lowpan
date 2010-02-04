@@ -81,7 +81,7 @@ Siarhei Kuryla\\ [0.5cm]
 %% Abstract page
 \newpage
 \begin{abstract}
-IEEE 802.15.4 is a standard which specifies the physical layer and media access control for low-rate wireless personal area networks providing node-to-node frame delivery between devices within reachable distance. The standard is targeted at low-cost, low-speed and low-power devices. Simple Network Management Protocol (SNMP) is a widely deployed application protocol for network management and data retrieval. It can be very lightweight and may fit resource-constrained devices very well. The focus of the proposed work will be implementation and evaluation of the SNMP protocol for devices supporting IEEE 802.15.4 Radios and the Contiki Embedded Operating System. This document provides background information on several related areas, such as 802.15.4 standard,                          the 6LoWPAN approach for transmitting IPv6 traffic over 802.15.4 and the SNMP protocol.
+IEEE 802.15.4 is a standard which specifies the physical layer and media access control for low-rate wireless personal area networks providing node-to-node frame delivery between devices within reachable distance. The standard is targeted at low-cost, low-speed and low-power devices. Simple Network Management Protocol (SNMP) is a widely deployed application protocol for network management and data retrieval. Its implementation can be very lightweight and may fit resource-constrained devices very well. The focus of the proposed work will be implementation and evaluation of the SNMP protocol for devices supporting IEEE 802.15.4 Radios and the Contiki Embedded Operating System. This document provides background information on several related areas, such as 802.15.4 standard, the 6LoWPAN approach for transmitting IPv6 traffic over 802.15.4 and the SNMP protocol.
 
 \end{abstract}
 
@@ -98,7 +98,7 @@ A low-power wireless personal area network (LoWPAN) is a simple low cost communi
 
 The purpose of the proposed work will be to investigate whether the SNMP functionality may be reused "as is" in LoWPANs. The implementation and evaluation of the SNMP protocol for devices supporting IEEE 802.15.4 and the Contiki Embedded Operating System \cite{contiki} will be accomplished. 
 
-As preparation for this work, several related areas have been studied in more depth to collect background information. The rest of the document is organised in six chapters. Chapter \ref{ch:ieee802.15.4} provides an introduction to the IEEE 802.15.4 standard. Chapter \ref{ch:6lowpan} describes the adaptation layer that allows the transmission of IPv6 packets over 802.15.4 links. In Chapter \ref{ch:routing} 6LoWPAN routing problems are discussed. The 6LoWPAN Neighbor Discovery Protocol is covered in Chapter \ref{ch:nd}. Chapter \ref{ch:snmp} gives an overview of the Simple Network Management Protocol. Chapter \ref{ch:proposal} describes details of the proposed work to be done in the scope of the Master Thesis.
+As preparation for this work, several related areas have been studied in more depth to collect background information. The rest of the document is organised in six chapters. Chapter \ref{ch:ieee802.15.4} provides an introduction to the IEEE 802.15.4 standard. Chapter \ref{ch:6lowpan} describes the adaptation layer that allows the transmission of IPv6 packets over 802.15.4 links. In Chapter \ref{ch:routing} 6LoWPAN routing problems are discussed. The 6LoWPAN Neighbour Discovery Protocol is covered in Chapter \ref{ch:nd}. Chapter \ref{ch:snmp} gives an overview of the Simple Network Management Protocol. Chapter \ref{ch:proposal} describes the details of the proposed work to be done in the scope of the Master Thesis.
 
 
 \chapter{IEEE 802.15.4}\label{ch:ieee802.15.4}
@@ -145,7 +145,7 @@ IEEE 802.15.4 defines addresses of two types: IEEE 64-bit extended addresses or 
 
 The IPv6 link-local address for an IEEE 802.15.4 interface is formed by appending the interface identifier to the prefix \texttt{FE80::/64}.
 
-Packets with a multicast IPv6 destination address are sent to the 16-bit 802.15.4 address obtained by concatenating the 3-bit multicast prefix 101, the last 5 bits in the 15-th octet and the whole 16-th octet of the multicast IPv6 address.
+Packets with a multicast IPv6 destination address are sent to the 16-bit 802.15.4 address obtained by concatenating the 3-bit multicast prefix 101, the last 5 bits in the 15th octet and the whole 16th octet of the multicast IPv6 address.
 
 \section{Adaptation Layer}\label{sec:adapt.layer}
 The IPv6 minimum Maximum Transmission Unit (MTU) size is defined as 1280 octets. As described in Chapter \ref{ch:ieee802.15.4}, the maximum IEEE 802.15.4 frame size is limited to 127 octets.  Taking into account the maximum frame overhead of 25 octets (disabled security), 102 octets are left at the media access control layer. Link-layer security imposes further overhead, which in the maximum case (21 octets for AES-CCM-128) leaves only 81 octets available, which is far below the minimum IPv6 packet size. Therefore, a fragmentation and reassembly adaptation layer is provided at the layer below IP.
