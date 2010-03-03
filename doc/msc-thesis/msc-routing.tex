@@ -1,0 +1,108 @@
+\chapter{6LoWPAN Routing}\label{ch:routing}
+Neither the IEEE 802.15.4 \cite{ieee802.15.4} standard nor the 6LoWPAN format specification \cite{rfc4944} define how mesh topologies could be obtained and maintained. In 6LoWPAN routing can be performed either in the IP-layer, using a route over approach, or in the adaptation layer, described in Section \ref{subsec:mesh.header}, using the mesh under approach. The mesh under configuration performs the multi-hop routing below the IP link and therefore the characteristics of IEEE 802.15.4 directly affect the 6LoWPAN routing mechanisms. In this approach a 6LoWPAN is seen as a single IP link and the IPv6 link-local scope covers all nodes in the LoWPAN. In the route over configuration intermediate nodes become LoWPAN Routers and perform standard layer 3 (IP) routing. Therefore, in this case, the link-local scope includes a set of nodes within symmetric radio range of a node and routing can be accomplished over various types of interconnected links.
+
+The IETF Routing Over Low power and Lossy networks working group  (ROLL WG) is focused on routing issues for Low power and Lossy Networks (LLNs)  composed of many embedded devices with limited power, memory, and processing resources interconnected by a variety of links, such as IEEE 802.15.4 or Low Power WiFi. The aim of the group is to provide an IPv6 architectural framework for routing and path selection in LLNs. So far several internet drafts have been published, such as an Overview of Existing Routing Protocols for Low Power and Lossy Networks \cite{draft-protocols-07},  IPv6 Routing Protocol for Low power and Lossy Networks \cite{draft-rpl-04}, and Routing Metrics used for Path Calculation in Low Power and Lossy Networks \cite{draft-routing-metrics-04}. 
+
+
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
+  +-----------------------------+    +-----------------------------+
+  |  Application Layer          |    |  Application Layer          |
+  +-----------------------------+    +-----------------------------+
+  |  Transport Layer (TCP/UDP)  |    |  Transport Layer (TCP/UDP)  |
+  +-----------------------------+    +-----------------------------+
+  |  Network Layer (IPv6)       |    |  Network       +---------+  |
+  +-----------------------------+    |  Layer         | Routing |  |
+  |  6LoWPAN       +---------+  |    |  (IPv6)        +---------+  |
+  |  Adaptation    | Routing*|  |    +-----------------------------+
+  |  Layer         +---------+  |    |  6LoWPAN Adaptation Layer   |
+  +-----------------------------+    +-----------------------------+
+  |  IEEE 802.15.4 (MAC)        |    |  IEEE 802.15.4 (MAC)        |
+  +-----------------------------+    +-----------------------------+
+  |  IEEE 802.15.4 (PHY)        |    |  IEEE 802.15.4 (PHY)        |
+  +-----------------------------+    +-----------------------------+
+\end{verbatim}
+\end{mylisting}
+\caption{Mesh Under (left) and Route Over routing (right)}\label{fig:routing}
+\end{figure}
+
+Further in this chapter, the list of requirements for 6LoWPAN routing defined in the internet draft \cite{draft-routing-04} is discussed in Section \ref{sec:rout.req}. The evaluation of existing  routing protocol for LLN scenarious is presented in Section \ref{sec:rout.protocols}. And,  finally, Section \ref{sec:rout.rpl} describes the internet draft \cite{draft-rpl-04} which specifies the IPv6 Routing Protocol for LLNs.
+
+\section{6LoWPAN Routing Requirements}\label{sec:rout.req}
+A LoWPAN has to support multiple device types and roles such as host nodes drawing their power from primary batteries, mains-powered nodes and power-affluent gateways. Battery-operated devices need to last from several months to a few years with a single AA battery. Therefore 6LoWPAN routing protocols have to cause minimal power consumption by the efficient use of control packets, minimization of expensive IP multicast which causes link broadcast to the entire LoWPAN, and by  efficient routing of data packets. Control messages have to fit into a single IEEE 802.15.4 frame in order to avoid packet fragmentation and the overhead for reassembly. The design of 6LoWPAN routing protocols should be scalable to support networks ranging from a few nodes to millions of nodes.
+
+6LoWPAN devices are unreliable due to limited system capabilities and an unpredictable environment where they can be deployed. 6LoWPAN routing protocols have to be robust to dynamic loss caused by link failure or device unavailability. Moreover, some of the links may be asymmetric, when the probability of successful transmission between two nodes is significantly higher in one direction than in the other one. 6LoWPAN routing protocols have to be designed to correctly operate in the presence of such links.  In addition, latency and successful end-to-end packet delivery ratio requirements of applications must be taken into account.
+
+6LoWPAN devices have small memory sizes, therefore 6LoWPAN routing protocols require implementation with small code size and low routing state to fit the typical 6LoWPAN node capacity. The code size is limited to available flash memory size, and the routing table is bounded by RAM size. 
+
+\section{Existing Routing Protocols}\label{sec:rout.protocols}
+The internet draft \cite{draft-protocols-07} provides a survey of the strengths and weaknesses of existing routing protocols with respect to the 6LoWPAN routing requirements. The survey examines whether existing and mature IETF protocols can meet LLN requirements without modifications. The list of considered protocols is OSPF \cite{rfc2328}, IS-IS \cite{rfc1142}, RIP \cite{rfc2453}, OLSR \cite{rfc3626}, OLSv2 \cite{draft-manet-olsrv2}, TBRPF \cite{rfc3684}, AODV \cite{rfc3561}, DYMO \cite{draft-manet-dymo}, and DSR \cite{rfc4728}. 
+
+The survey uses five criteria derived from a set of requirements for routing in low power and lossy networks:  routing state, loss response, control cost, link cost, and node cost. The routing state criterion indicates whether routing state scales reasonably within the memory resources of low-power nodes. Routing state that scales linearly with the size of the network or a node's neighbourhood fails, and passes if scales with the number of destinations. The loss response indicates whether the protocol localizes responses to link failures with no triggering of global network re-optimization. Protocols which require many link changes to propagate across the entire network fail. The control cost criterion defines constraints on control traffic required to discover a topology. The link and node cost specify how a protocol chooses routes for data packets to take through the network. A protocol passes these two criteria if it provides a mechanism allowing both link and node properties to be considered when choosing routes.
+
+Table \ref{table:routing.prot.survey} summarizes the survey showing which of existing protocols meet the criteria described above. The detailed analysis is given in the document \cite{draft-protocols-07}. For each of these criteria, the value "pass" indicates that a protocol has satisfactory performance.  The value "fail" corresponds to not acceptable performance, which means that the protocol does not meet the criterion. Finally, a question mark"?" means that a protocol would require a supplementary document specifying how a protocol should behave. As can be seen from the table, no existing IETF protocol meets all described criteria. Therefore, the survey concludes that new protocol specification documents have to be defined for a LLN routing protocol.
+
+
+\begin{table}[htp]
+\begin{center}
+        \begin{tabular}{|l|c|c|c|c|c|}
+          \hline
+          Protocol   &   State &  Loss & Control &  Link Cost & Node Cost\\
+          \hline
+          \hline
+     OSPF/IS-IS  &  fail  &  fail  &  fail   &   pass    &   fail\\
+     OLSRv2      &  fail  &   ?    &   ?     &   pass    &   pass\\
+     TBRPF       &  fail  &  pass  &  fail   &   pass    &    ?\\
+     RIP         &  pass  &  fail  &  pass   &    ?      &   fail\\
+     AODV        &  pass  &  fail  &  pass   &   fail    &   fail\\
+     DYMO        &  pass  &   ?    &  pass   &    ?      &    ?\\
+     DSR         &  fail  &  pass  &  pass   &   fail    &   fail\\
+          \hline
+        \end{tabular}
+\end{center}
+\caption{Routing protocol survey results}\label{table:routing.prot.survey}
+\end{table}
+
+
+\section{Overview of IPv6 Routing Protocol for LLNs}\label{sec:rout.rpl}
+Typically, the traffic patterns for LLNs are not simply unicast, but in many cases point-to-multipoint or multipoint-to-point. The IPv6 Routing Protocol for Low power and Lossy Networks (RPL) \cite{draft-rpl-04} is designed to meet the routing requirements for LLNs and supports multipoint-to-point traffic from devices inside the LLN towards a central control point, as well as point-to-multipoint traffic from the central control point to the devices inside the LLN. 
+
+The RPL introduces a notion of a Directed Acyclic Graph (DAG), which is a directed graph with no cycles. All edges of a DAG are oriented toward and terminating at one or more root nodes uniquely identified by the DAGID. A Destination Oriented DAG (DODAG) is a DAG rooted at a single destination. A DODAG can be constructed with various routing metrics and optimization objectives in use to compute the shortest paths. The set of supported link and node metrics used in the RPL is specified in the internet draft \cite{draft-routing-metrics-04}. 
+
+A DAG instance may consist of multiple DODAGs. The routing metrics and objectives for a certain DAG instance are specified by an Objective Function (OF). Each DAG instance constructs a routing topology optimized for its OF. Traffic that belongs to a specific DODAG instance is marked in the flow label of the IPv6 header. A network may have more than one DAG instance which operate independently. This allows to applications to tag traffic to follow an appropriate DAG instance, i.e., optimized for low latency or low energy.  
+
+\subsection{Messages}
+The protocol defines the RPL Control Message, which is a new ICMPv6 message. The format of this message is shown in Figure \ref{fig:rpl.control.message}.
+\begin{figure}[htp]
+\begin{mylisting}
+\begin{verbatim}
+   0                   1                   2                   3
+   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |     Type      |     Code      |          Checksum             |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                                                               |
+   +                         Message Body                          +
+   |                                                               |
+\end{verbatim}
+\end{mylisting}
+\caption{RPL Control Message}\label{fig:rpl.control.message}
+\end{figure}
+
+The Type for the RPL Control message has the value of 155. The Code identifies the RPL Control Messages as follows:  0x01 -- DAG Information Solicitation; 0x02: DAG Information Object; 0x04: Destination Advertisement Object. 
+
+DAG Information Object (DIO) message exchanges are used by RPL nodes to construct and maintain DODAGs. A DIO message identifies the DAG instance, the DAGID, and the values used to compute the DAG instance's objective function. The DIO also includes a measure derived from the location of the node within the DODAG, the rank, used to determine the position of the node relative to other nodes and avoid loops. The exact calculation of the rank is left to the Objective Function and  depends on the parents of the node. The DAG Information Solicitation (DIS) message is used to solicit a DAG Information Object from a RPL node. 
+
+DIO messages allow to establish upward routes, i.e., the routes in the direction from leaf nodes towards DODAG roots.  In order to establish downward routes Destination Advertisement Object (DAO) messages are used. The DAO propagates destination information upwards along the DODAG. 
+
+The detailed format of the messages is specified in the internet draft \cite{draft-rpl-04}.
+
+\subsection{Basic Operation}
+A set of nodes that can be reached with a link-local multicast forms the node's neighbor set. A node that is not a DODAG root may maintain multiple DAG parents for a single DAG instance. DAG parents of a node is a subset of the set of its neighbors and can be selected using different policies. 
+
+DAG discovery allows a node to join a DODAG by discovering neighbors that are members of the DODAG.  Some nodes are preconfigured to be DODAG roots. Each node maintains a timer that governs when to advertise node presence by sending link-local multicast DIO messages. The rate at which DIO messages are sent varies in response to stability or detection of routing inconsistencies. Nodes listen for DIOs and use their information to join a new DODAG, or to maintain an existing DODAG, according to the specified Objective Function. DODAG discovery avoids loops by constraining how and when nodes can increase their rank.
+
+The destination advertisement mechanism supports the dissemination of routing state required to support traffic flows down along the DODAG, from the DODAG root toward nodes. Destinations disseminated with the destination advertisement mechanism may be prefixes, individual hosts, or multicast listeners.  The mechanism supports nodes with varying capabilities. Nodes that are capable to maintain routing state may inspect destination advertisements and learn hop-by-hop routing state toward destinations populating their routing tables with the learned routes. They may also learn necessary piecewise source routes to traverse regions of the LLN that do not maintain routing state. Route aggregation on known destinations can be accomplished by such nodes before emitting Destination Advertisements. The nodes that are incapable of storing routing state forward destination advertisements, attaching a next-hop address to the reverse route used to support the construction of piecewise source routes.
+
+A comprehensive description of the RPL is given in the internet draft \cite{draft-rpl-04}
