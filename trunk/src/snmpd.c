@@ -5,22 +5,11 @@
 
 #define UDP_IP_BUF   ((struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
-char *help_buf = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
-				 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n"
-				 "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n"
-				 "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\n"
-				 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
-				 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n"
-				 "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n"
-				 "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\n"
-				 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
-				 "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n"
-				 "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\n"
-				 "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\n";				 
+#define PRINT6ADDR(addr) "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x", ((u8_t *)addr)[0], ((u8_t *)addr)[1], ((u8_t *)addr)[2], ((u8_t *)addr)[3], ((u8_t *)addr)[4], ((u8_t *)addr)[5], ((u8_t *)addr)[6], ((u8_t *)addr)[7], ((u8_t *)addr)[8], ((u8_t *)addr)[9], ((u8_t *)addr)[10], ((u8_t *)addr)[11], ((u8_t *)addr)[12], ((u8_t *)addr)[13], ((u8_t *)addr)[14], ((u8_t *)addr)[15]
 				 
 #define min(a,b) ( (a>b) ? b : a )
-#define max(a,b) ( (a>b) ? a : b )				 
-#define BUF_LEN 300
+#define max(a,b) ( (a>b) ? a : b )
+
 #define UDP_DATA_LEN 10000
 
 static struct uip_udp_conn *udpconn;
@@ -28,7 +17,9 @@ static struct uip_udp_conn *udpconn;
 PROCESS(udp_process_receiver, "UPD test receiver");
 AUTOSTART_PROCESSES(&udp_process_receiver);
 
-void send(char *r) {
+/*-----------------------------------------------------------------------------------*/
+void send(char *r) 
+{
 	uip_ipaddr_copy(&udpconn->ripaddr, &UDP_IP_BUF->srcipaddr);
 	udpconn->rport = UDP_IP_BUF->srcport;
 
@@ -38,23 +29,27 @@ void send(char *r) {
 		cur += UDP_DATA_LEN;
 	}
 
-	if (strlen(r) > 0) {
-		uip_udp_packet_send(udpconn, "\nsiarhei$ ", 10);
-	} else {
-		uip_udp_packet_send(udpconn, "siarhei$ ", 9);
-	}
-
 	memset(&udpconn->ripaddr, 0, sizeof(udpconn->ripaddr));
 	udpconn->rport = 0;
 }
+/*-----------------------------------------------------------------------------------*/
 
-static void udphandler(process_event_t ev, process_data_t data) {
-	char buf[BUF_LEN];
+/*-----------------------------------------------------------------------------------*/
+char buf[1000];
+
+static void udphandler(process_event_t ev, process_data_t data) 
+{
 	if (ev == tcpip_event && uip_newdata()) {
-		send(help_buf);
+		((char *)uip_appdata)[uip_datalen() - 1] = 0;
+		memset(buf, 0, 1000);
+		sprintf(buf, PRINT6ADDR(&(UDP_IP_BUF->srcipaddr)));
+//        send((char *)uip_appdata);
+        send(buf);
 	}
 }
+/*-----------------------------------------------------------------------------------*/
 
+/*-----------------------------------------------------------------------------------*/
 PROCESS_THREAD(udp_process_receiver, ev, data) {
 	static struct etimer timer;
 
@@ -68,4 +63,5 @@ PROCESS_THREAD(udp_process_receiver, ev, data) {
 	}
 	PROCESS_END();
 }
+/*-----------------------------------------------------------------------------------*/
 
