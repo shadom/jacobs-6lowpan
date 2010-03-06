@@ -1,3 +1,0 @@
-raven-snmpd_src = snmpd.c snmp-protocol.c snmpd-utils.c snmpd-logging.c
-
-
