@@ -159,7 +159,8 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
     static int version;
     static char community[COMMUNITY_STRING_LEN];
     static u8_t request_type;
-
+    static int request_id, error_status, error_index;
+    
     pos = 0;
 
     /* Sequence */
@@ -204,7 +205,7 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
     }
     snmp_log("community string: %s\n", community);
 
-    /* Request */
+    /* Request PDU */
     if (fetch_type(request, len, &pos, &request_type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
         return -1;
     }
@@ -213,6 +214,43 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         return -1;
     }    
     snmp_log("request type: %d\n", request_type);
+
+    /* request-id */
+    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+        return -1;
+    }
+    if (type != BER_TYPE_INTEGER || length < 1) {
+        snmp_log("malformed SNMP request-id, type %02X length %d\n", type, length);
+        return -1;
+    } else if (fetch_integer_value(request, len, &pos, &length, &request_id) == -1) {
+        return -1;
+    }
+    snmp_log("request id: %d\n", request_id);
+
+    /* error-state */
+    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+        return -1;
+    }
+    if (type != BER_TYPE_INTEGER || length < 1) {
+        snmp_log("malformed SNMP error-status, type %02X length %d\n", type, length);
+        return -1;
+    } else if (fetch_integer_value(request, len, &pos, &length, &error_status) == -1) {
+        return -1;
+    }
+    snmp_log("error-status: %d\n", error_status);
+
+    /* error-index */
+    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+        return -1;
+    }
+    if (type != BER_TYPE_INTEGER || length < 1) {
+        snmp_log("malformed SNMP error-index, type %02X length %d\n", type, length);
+        return -1;
+    } else if (fetch_integer_value(request, len, &pos, &length, &error_index) == -1) {
+        return -1;
+    }
+    snmp_log("error-index: %d\n", error_index);
+
 
     snmp_log("OK\n");
 
