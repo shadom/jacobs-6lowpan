@@ -5,8 +5,7 @@
 /*
  * Decode a BER encoded SNMP message.
  */
-
-static u8_t fetch_type(const u8_t* const request, const u16_t* const len, u16_t* pos, u8_t* type)
+static char fetch_type(const u8_t* const request, const u16_t* const len, u16_t* pos, u8_t* type)
 {
     if (*pos < *len) {
         switch (request[*pos]) {
@@ -39,12 +38,12 @@ static u8_t fetch_type(const u8_t* const request, const u16_t* const len, u16_t*
                 *pos = *pos + 1;
                 break;
             default:
-                //snmp_log("unsupported BER type %02X\n", request[*pos]);
+                snmp_log("unsupported BER type %02X\n", request[*pos]);
                 return -1;
         }
     } else {
-            //snmp_log("malformed SNMP request\n");
-            return -1;
+        snmp_log("unexpected end of the SNMP request [type=1]\n");
+        return -1;
     }
     return 0;
 }
@@ -52,61 +51,61 @@ static u8_t fetch_type(const u8_t* const request, const u16_t* const len, u16_t*
 
 /*-----------------------------------------------------------------------------------*/
 /*
+ * Decode a BER encoded length field.
+ */
+static char fetch_length(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* length)
+{
+    if (*pos < *len) {
+        /* length is encoded in a single length byte */
+        if (!(request[*pos] & 0x80)) {
+            *length = request[*pos];
+            *pos = *pos + 1;
+        } else {
+            /* constructed, definite-length method or indefinite-length method is used */
+            u8_t size_of_length = request[*pos] & 0x7F;
+            *pos = *pos + 1;
+            if (size_of_length > 2) {
+                snmp_log("unsupported value of the length field occures (must be up to 2 bytes)");
+                return 1;
+            }
+            *length = 0;
+            while (size_of_length--) {
+                if (*pos < *len) {
+                    *length = (*length << 8) + request[*pos];
+                    *pos = *pos + 1;
+                } else {
+                    snmp_log("unexpected end of the SNMP request [type=2]\n");
+                    return -1;
+                }
+            }
+        }
+    } else {
+        snmp_log("unexpected end of the SNMP request [type=3]\n");
+        return -1;
+    }
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
  * Decode a BER encoded SNMP message.
  */
 u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
 {
-    static u16_t pos = 0;
-    static u8_t type, res;
+    static u16_t pos, length;
+    static u8_t type;
+    pos = 0;
+    if (fetch_type(request, len, &pos, &type) == -1) {
+        return -1;
+    }
+    if (fetch_length(request, len, &pos, &length) == -1) {
+        return -1;
+    }
 
-    //snmp_log("pos: %u\n", pos);
-    
-    res = fetch_type(request, len, &pos, &type);
-    snmp_log("%d %d %dx\n", pos, type, res);
-    /*if () {
-		return -1;
-	} else if (type != BER_TYPE_SEQUENCE || length != (client->size - pos)) {
-		lprintf(LOG_DEBUG, "unexpected SNMP header type %02X length %d\n",
-			type, length);
-		errno = EINVAL;
-		return -1;
-	}*/
+    if (type != BER_TYPE_SEQUENCE || length != (*len - pos)) {
+        snmp_log("unexpected SNMP header type %02X length %d\n", type, length);
+        return -1;
+    }
     return 0;
 }
 
-/*
-static int fetch_length(const unsigned char *packet,
-	size_t size, size_t *pos, int *type, int *length)*/
-
-	/* Fetch the ASN.1 element length (only lengths up to 16 bit supported) */
-/*	if (*pos < size) {
-		if (!(packet[*pos] & 0x80)) {
-			*length = packet[*pos];
-			*pos = *pos + 1;
-		} else {
-			length_of_length = packet[*pos] & 0x7F;
-			if (length_of_length > 2) {
-				lprintf(LOG_DEBUG, "overflow for element length\n");
-				errno = EINVAL;
-				return -1;
-			}
-			*pos = *pos + 1;
-			*length = 0;
-			while (length_of_length--) {
-				if (*pos < size) {
-					*length = (*length << 8) + packet[*pos];
-					*pos = *pos + 1;
-				} else {
-					lprintf(LOG_DEBUG, "underflow for element length\n");
-					errno = EINVAL;
-					return -1;
-				}
-			}
-		}
-	} else {
-		lprintf(LOG_DEBUG, "underflow for element length\n");
-		errno = EINVAL;
-		return -1;
-	}
-
-}*/
