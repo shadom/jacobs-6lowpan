@@ -101,11 +101,11 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
     if (fetch_length(request, len, &pos, &length) == -1) {
         return -1;
     }
-
     if (type != BER_TYPE_SEQUENCE || length != (*len - pos)) {
         snmp_log("unexpected SNMP header type %02X length %d\n", type, length);
         return -1;
     }
+    printf("OK\n");
     return 0;
 }
 
