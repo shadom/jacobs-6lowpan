@@ -1,3 +1,27 @@
+/* -----------------------------------------------------------------------------
+ * SNMP implementation for Contiki
+ *
+ * Copyright (C) 2010 Siarhei Kuryla <kurilo@gmail.com>
+ *
+ * This program is part of free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ *
+ */
+
+#include <string.h>
+#include <stdio.h>
+
 #include "snmp-protocol.h"
 #include "snmpd-logging.h"
 
@@ -42,7 +66,7 @@ static char fetch_type(const u8_t* const request, const u16_t* const len, u16_t*
                 return -1;
         }
     } else {
-        snmp_log("unexpected end of the SNMP request [type=1]\n");
+        snmp_log("unexpected end of the SNMP request [1]\n");
         return -1;
     }
     return 0;
@@ -65,7 +89,7 @@ static char fetch_length(const u8_t* const request, const u16_t* const len, u16_
             u8_t size_of_length = request[*pos] & 0x7F;
             *pos = *pos + 1;
             if (size_of_length > 2) {
-                snmp_log("unsupported value of the length field occures (must be up to 2 bytes)");
+                snmp_log("unsupported value of the length field occurs (must be up to 2 bytes)");
                 return 1;
             }
             *length = 0;
@@ -74,15 +98,34 @@ static char fetch_length(const u8_t* const request, const u16_t* const len, u16_
                     *length = (*length << 8) + request[*pos];
                     *pos = *pos + 1;
                 } else {
-                    snmp_log("unexpected end of the SNMP request [type=2]\n");
+                    snmp_log("can't fetch length, unexpected end of the SNMP request [2]\n");
                     return -1;
                 }
             }
         }
     } else {
-        snmp_log("unexpected end of the SNMP request [type=3]\n");
+        snmp_log("can't fetch length, unexpected end of the SNMP request [3]\n");
         return -1;
     }
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Decode a BER encoded unsigned integer value.
+ */
+static char fetch_integer_value(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, int* value)
+{
+    if (*pos + *field_len - 1 < *len) {
+        memset(value, (request[*pos] & 0x80) ? 0xFF : 0x00, sizeof (*value));
+        while ((*field_len)--) {
+            *value = (*value << 8) + request[*pos];
+            *pos = *pos + 1;
+        }
+    } else {
+        snmp_log("can't fetch integer, unexpected end of the SNMP request\n");
+        return -1;
+    }    
     return 0;
 }
 
@@ -94,18 +137,32 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
 {
     static u16_t pos, length;
     static u8_t type;
+    int version;
     pos = 0;
-    if (fetch_type(request, len, &pos, &type) == -1) {
-        return -1;
-    }
-    if (fetch_length(request, len, &pos, &length) == -1) {
+
+    /* SEQUENCE */
+    if (fetch_type(request, len, &pos, &type) == -1 || fetch_length(request, len, &pos, &length) == -1) {
         return -1;
     }
     if (type != BER_TYPE_SEQUENCE || length != (*len - pos)) {
-        snmp_log("unexpected SNMP header type %02X length %d\n", type, length);
+        snmp_log("malformed SNMP header type %02X length %d\n", type, length);
         return -1;
     }
-    printf("OK\n");
+    /* VERSION */
+    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+        return -1;
+    }
+    if (type != BER_TYPE_INTEGER || length != 1) {
+        snmp_log("malformed SNMP version type %02X length %d\n", type, length);
+        return -1;
+    } else if (fetch_integer_value(request, len, &pos, &length, &version) == -1) {
+        return -1;
+    } else if (version != SNMP_VERSION_1 && version != SNMP_VERSION_2C) {
+        snmp_log("unsupported SNMP version %d\n", version);
+        return -1;
+    }
+
+    snmp_log("OK\n");
     return 0;
 }
 
