@@ -25,8 +25,19 @@
 #include "snmp-protocol.h"
 #include "snmpd-logging.h"
 
-#define COMMUNITY_STRING_LEN 32
+/** maximum length of the community string */
+#define COMMUNITY_STRING_LEN    32
 
+/** maximum number of variable bindings in a request */
+#define VAR_BIND_LEN            32
+
+/** maximum number of elements in an OID */
+#define OID_LEN                 20
+
+typedef struct oid {
+    u16_t values[OID_LEN];
+    short len;
+} oid;
 /*-----------------------------------------------------------------------------------*/
 /*
  * Decode a BER encoded SNMP message.
@@ -150,6 +161,77 @@ static char fetch_octet_string(const char* const request, const u16_t* const len
 
 /*-----------------------------------------------------------------------------------*/
 /*
+ * Decode a BER encoded OID.
+ */
+static int fetch_oid(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, oid* o )
+{
+    if (*pos + *field_len -1 < *len) {
+        o->len = 0;
+        if (!(request[*pos] & 0x80)) {
+            o->values[o->len++] = request[*pos] / 40;
+            o->values[o->len++] = request[*pos] % 40;
+            *pos = *pos + 1;
+            (*field_len)--;
+        } else {
+            snmp_log("first bit of the oid must be set\n");
+            return -1;
+        }
+
+        while (*field_len) {
+            if (o->len < OID_LEN) {
+                o->values[o->len] = 0;
+            } else {
+                snmp_log("oid contains too many elements (max=%d)\n", OID_LEN);
+                return -1;
+            }
+            while ((*field_len)--) {
+                o->values[o->len] = (o->values[o->len] << 7) + (request[*pos] & 0x7F);
+                if (request[*pos] & 0x80) {
+                    if ((*field_len) == 0) {
+                        snmp_log("can't fetch an oid: unexpected end of the SNMP request\n");
+                        return -1;
+                    }
+                    *pos = *pos + 1;
+                } else {
+                    *pos = *pos + 1;
+                    break;
+                }
+            }
+            o->len++;
+        }
+    } else {
+        snmp_log("can't fetch an oid: unexpected end of the SNMP request\n");
+        return -1;
+    }
+    return 0;
+}
+
+static int fetch_void(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len)
+{
+    if (*pos + *field_len - 1 < *len) {
+        *pos = *pos + *field_len;
+    } else {
+        snmp_log("can't fetch void: unexpected end of the SNMP request\n");
+        return -1;
+    }
+    return 0;
+}
+
+
+#if DEBUG
+void log_oid(oid* o) {
+    int i;
+    for (i = 0; i < o->len - 1; i++) {
+        printf("%d.", o->values[i]);
+    }
+    printf("%d\n", o->values[o->len - 1]);
+}
+#else
+#define log_oid(...)
+#endif /* DEBUG */
+
+/*-----------------------------------------------------------------------------------*/
+/*
  * Decode a BER encoded SNMP request.
  */
 u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
@@ -160,6 +242,8 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
     static char community[COMMUNITY_STRING_LEN];
     static u8_t request_type;
     static int request_id, error_status, error_index;
+    static u8_t var_bind_list_len;
+    static oid var_bind_list[VAR_BIND_LEN];
     
     pos = 0;
 
@@ -168,16 +252,16 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         return -1;
     }
     if (type != BER_TYPE_SEQUENCE || length != (*len - pos)) {
-        snmp_log("malformed SNMP header type %02X length %d\n", type, length);
+        snmp_log("bad SNMP header: type %02X length %d\n", type, length);
         return -1;
     }
 
-    /* Version */
+    /* version */
     if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
         return -1;
     }
     if (type != BER_TYPE_INTEGER || length != 1) {
-        snmp_log("malformed SNMP version type %02X length %d\n", type, length);
+        snmp_log("bad SNMP version: type %02X length %d\n", type, length);
         return -1;
     } else if (fetch_integer_value(request, len, &pos, &length, &version) == -1) {
         return -1;
@@ -187,7 +271,7 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
     }
     snmp_log("snmp version: %d\n", version);
 
-    /* Community name */
+    /* community name */
     if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
         return -1;
     }
@@ -205,12 +289,13 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
     }
     snmp_log("community string: %s\n", community);
 
-    /* Request PDU */
+    /* request PDU */
     if (fetch_type(request, len, &pos, &request_type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
         return -1;
     }
+
     if (length != (*len - pos)) {
-        snmp_log("malformed SNMP header type %02X length %d\n", type, length);
+        snmp_log("bad SNMP header: type %02X length %d\n", type, length);
         return -1;
     }    
     snmp_log("request type: %d\n", request_type);
@@ -220,7 +305,7 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         return -1;
     }
     if (type != BER_TYPE_INTEGER || length < 1) {
-        snmp_log("malformed SNMP request-id, type %02X length %d\n", type, length);
+        snmp_log("bad SNMP request-id: type %02X length %d\n", type, length);
         return -1;
     } else if (fetch_integer_value(request, len, &pos, &length, &request_id) == -1) {
         return -1;
@@ -232,7 +317,7 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         return -1;
     }
     if (type != BER_TYPE_INTEGER || length < 1) {
-        snmp_log("malformed SNMP error-status, type %02X length %d\n", type, length);
+        snmp_log("bad SNMP error-status: type %02X length %d\n", type, length);
         return -1;
     } else if (fetch_integer_value(request, len, &pos, &length, &error_status) == -1) {
         return -1;
@@ -244,16 +329,64 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         return -1;
     }
     if (type != BER_TYPE_INTEGER || length < 1) {
-        snmp_log("malformed SNMP error-index, type %02X length %d\n", type, length);
+        snmp_log("bad SNMP error-index: type %02X length %d\n", type, length);
         return -1;
     } else if (fetch_integer_value(request, len, &pos, &length, &error_index) == -1) {
         return -1;
     }
     snmp_log("error-index: %d\n", error_index);
 
+    /* variable-bindings */
+    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+        return -1;
+    }
+    if (type != BER_TYPE_SEQUENCE || length != (*len - pos)) {
+        snmp_log("bad SNMP variable binding header length: type %02X length %d\n", type, length);
+        return -1;
+    }
+    /* variable binding list */
+    var_bind_list_len = 0;
+    while (pos < *len) {
+        if (var_bind_list_len >= VAR_BIND_LEN) {
+            snmp_log("maximum number of var bindings in the list is exceeded: max=%d\n", VAR_BIND_LEN);
+            return -1;
+        }
+        
+        /* sequence */
+        if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+            return -1;
+        }
+        if (type != BER_TYPE_SEQUENCE || length < 1) {
+            snmp_log("bad SNMP variable binding: type %02X length %d\n", type, length);
+            return -1;
+        }
+        
+        /* OID */
+        if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+            return -1;
+        }
+        if (type != BER_TYPE_OID || length < 1) {
+            snmp_log("bad SNMP varbinding OID: type %02X length %d\n", type, length);
+            return -1;
+        }
+        if (fetch_oid(request, len, &pos, &length, &var_bind_list[var_bind_list_len]) == -1) {
+            return -1;
+        }
+        /* value */
+        if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+            return -1;
+        }
+        if ((type == BER_TYPE_NULL && length != 0) || (type != BER_TYPE_NULL && length == 0)) {
+            snmp_log("bad SNMP varbinding value: type %02X length %d\n", type, length);
+            return -1;
+        } else if (fetch_void(request, len, &pos, &length) == -1) {
+            return -1;
+        }
+        log_oid(&var_bind_list[var_bind_list_len]);
+        var_bind_list_len++;
+    }
 
     snmp_log("OK\n");
 
     return 0;
 }
-
