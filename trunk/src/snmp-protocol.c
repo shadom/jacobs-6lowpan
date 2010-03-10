@@ -34,15 +34,77 @@
 /** maximum number of elements in an OID */
 #define OID_LEN                 20
 
-typedef struct oid {
+/*
+ * BER identifiers for ASN.1 implementation of SNMP.
+ */
+#define BER_TYPE_BOOLEAN                                0x01
+#define BER_TYPE_INTEGER                                0x02
+#define BER_TYPE_BIT_STRING                             0x03
+#define BER_TYPE_OCTET_STRING                           0x04
+#define BER_TYPE_NULL                                   0x05
+#define BER_TYPE_OID                                    0x06
+#define BER_TYPE_SEQUENCE                               0x30
+#define BER_TYPE_IPADDRESS                              0x40
+#define BER_TYPE_COUNTER                                0x41
+#define BER_TYPE_GAUGE                                  0x42
+#define BER_TYPE_TIME_TICKS				0x43
+#define BER_TYPE_OPAQUE                                 0x44
+#define BER_TYPE_NASAPADDRESS                           0x45
+#define BER_TYPE_COUNTER64                              0x46
+#define BER_TYPE_UINTEGER32                             0x47
+#define BER_TYPE_NO_SUCH_OBJECT                         0x80
+#define BER_TYPE_NO_SUCH_INSTANCE                       0x81
+#define BER_TYPE_END_OF_MIB_VIEW                        0x82
+#define BER_TYPE_SNMP_GET                               0xA0
+#define BER_TYPE_SNMP_GETNEXT                           0xA1
+#define BER_TYPE_SNMP_RESPONSE                          0xA2
+#define BER_TYPE_SNMP_SET                               0xA3
+#define BER_TYPE_SNMP_GETBULK                           0xA5
+#define BER_TYPE_SNMP_INFORM                            0xA6
+#define BER_TYPE_SNMP_TRAP                              0xA7
+#define BER_TYPE_SNMP_REPORT                            0xA8
+
+#define SNMP_VERSION_1					0
+#define SNMP_VERSION_2C					1
+
+typedef struct {
     u16_t values[OID_LEN];
     short len;
-} oid;
+} oid_t;
+
+/*typedef struct {
+    int len;
+} varbind_value_t;
+
+typedef struct {
+    oid_t oid;
+//    varbind_t value;
+} varbind_t;*/
+
+
+typedef struct {
+    int version;
+    u8_t community[COMMUNITY_STRING_LEN];
+    u8_t request_type;
+    int request_id;
+    int error_status;
+    int error_index;
+    u8_t var_bind_list_len;
+    oid_t var_bind_list[VAR_BIND_LEN];
+} request_t;
+
+typedef struct {
+    int request_id;
+    int error_status;
+	//value_t value_list[MAX_NR_VALUES];
+	int value_list_length;
+} response_t;
+
 /*-----------------------------------------------------------------------------------*/
 /*
  * Decode a BER encoded SNMP message.
  */
-static char fetch_type(const u8_t* const request, const u16_t* const len, u16_t* pos, u8_t* type)
+static int fetch_type(const u8_t* const request, const u16_t* const len, u16_t* pos, u8_t* type)
 {
     if (*pos < *len) {
         switch (request[*pos]) {
@@ -90,7 +152,7 @@ static char fetch_type(const u8_t* const request, const u16_t* const len, u16_t*
 /*
  * Decode a BER encoded length field.
  */
-static char fetch_length(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* length)
+static int fetch_length(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* length)
 {
     if (*pos < *len) {
         /* length is encoded in a single length byte */
@@ -128,7 +190,7 @@ static char fetch_length(const u8_t* const request, const u16_t* const len, u16_
 /*
  * Decode a BER encoded integer value.
  */
-static char fetch_integer_value(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, int* value)
+static int fetch_integer_value(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, int* value)
 {
     if (*pos + *field_len - 1 < *len) {
         memset(value, (request[*pos] & 0x80) ? 0xFF : 0x00, sizeof (*value));
@@ -147,7 +209,7 @@ static char fetch_integer_value(const u8_t* const request, const u16_t* const le
 /*
  * Decode a BER encoded unsigned integer value.
  */
-static char fetch_octet_string(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, u8_t* value, u8_t value_len)
+static int fetch_octet_string(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, u8_t* value, u8_t value_len)
 {
     if (*pos + *field_len - 1 < *len) {
         memcpy(value, &request[*pos], *field_len);
@@ -164,7 +226,7 @@ static char fetch_octet_string(const u8_t* const request, const u16_t* const len
 /*
  * Decode a BER encoded OID.
  */
-static int fetch_oid(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, oid* o )
+static int fetch_oid(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, oid_t* o )
 {
     if (*pos + *field_len -1 < *len) {
         o->len = 0;
@@ -220,7 +282,7 @@ static int fetch_void(const u8_t* const request, const u16_t* const len, u16_t* 
 
 
 #if DEBUG
-void log_oid(oid* o) {
+void log_oid(oid_t* o) {
     int i;
     for (i = 0; i < o->len - 1; i++) {
         printf("%d.", o->values[i]);
@@ -235,21 +297,15 @@ void log_oid(oid* o) {
 /*
  * Decode a BER encoded SNMP request.
  */
-u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
+int  snmp_decode_request(const u8_t* const input, const u16_t* const len, request_t* request)
 {
     static u16_t pos, length;
     static u8_t type;
-    static int version;
-    static u8_t community[COMMUNITY_STRING_LEN];
-    static u8_t request_type;
-    static int request_id, error_status, error_index;
-    static u8_t var_bind_list_len;
-    static oid var_bind_list[VAR_BIND_LEN];
-    
+   
     pos = 0;
     
     /* Sequence */
-    if (fetch_type(request, len, &pos, &type) == -1 || fetch_length(request, len, &pos, &length) == -1) {
+    if (fetch_type(input, len, &pos, &type) == -1 || fetch_length(input, len, &pos, &length) == -1) {
         return -1;
     }
     if (type != BER_TYPE_SEQUENCE || length != (*len - pos)) {
@@ -258,22 +314,22 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
     }
     
     /* version */
-    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+    if (fetch_type(input, len, &pos, &type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
         return -1;
     }
     if (type != BER_TYPE_INTEGER || length != 1) {
         snmp_log("bad SNMP version: type %02X length %d\n", type, length);
         return -1;
-    } else if (fetch_integer_value(request, len, &pos, &length, &version) == -1) {
+    } else if (fetch_integer_value(input, len, &pos, &length, &request->version) == -1) {
         return -1;
-    } else if (version != SNMP_VERSION_1 && version != SNMP_VERSION_2C) {
-        snmp_log("unsupported SNMP version %d\n", version);
+    } else if (request->version != SNMP_VERSION_1 && request->version != SNMP_VERSION_2C) {
+        snmp_log("unsupported SNMP version %d\n", request->version);
         return -1;
     }
-    snmp_log("snmp version: %d\n", version);
+    snmp_log("snmp version: %d\n", request->version);
     
     /* community name */
-    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+    if (fetch_type(input, len, &pos, &type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
         return -1;
     }
     if (type != BER_TYPE_OCTET_STRING) {
@@ -284,63 +340,63 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         snmp_log("community string is too long (must be up to 31 character)\n");
         return -1;
     }    
-    if (fetch_octet_string((u8_t*)request, len, &pos, &length, community, COMMUNITY_STRING_LEN) == -1) {
+    if (fetch_octet_string((u8_t*)input, len, &pos, &length, request->community, COMMUNITY_STRING_LEN) == -1) {
         return -1;
-    } else if (strlen((char*)community) < 1) {
-        snmp_log("unsupported SNMP community '%s'\n", community);
+    } else if (strlen((char*)request->community) < 1) {
+        snmp_log("unsupported SNMP community '%s'\n", request->community);
         return -1;
     }
-    snmp_log("community string: %s\n", community);
+    snmp_log("community string: %s\n", request->community);
 
     /* request PDU */
-    if (fetch_type(request, len, &pos, &request_type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+    if (fetch_type(input, len, &pos, &request->request_type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
         return -1;
     }
 
     if (length != (*len - pos)) {
-        snmp_log("bad SNMP header: type %02X length %d\n", type, length);
+        snmp_log("bad SNMP header: type %02X length %d\n", request->request_type, length);
         return -1;
     }    
-    snmp_log("request type: %d\n", request_type);
+    snmp_log("request type: %d\n", request->request_type);
 
     /* request-id */
-    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+    if (fetch_type(input, len, &pos, &type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
         return -1;
     }
     if (type != BER_TYPE_INTEGER || length < 1) {
         snmp_log("bad SNMP request-id: type %02X length %d\n", type, length);
         return -1;
-    } else if (fetch_integer_value(request, len, &pos, &length, &request_id) == -1) {
+    } else if (fetch_integer_value(input, len, &pos, &length, &request->request_id) == -1) {
         return -1;
     }
-    snmp_log("request id: %d\n", request_id);
+    snmp_log("request id: %d\n", request->request_id);
 
     /* error-state */
-    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+    if (fetch_type(input, len, &pos, &type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
         return -1;
     }
     if (type != BER_TYPE_INTEGER || length < 1) {
         snmp_log("bad SNMP error-status: type %02X length %d\n", type, length);
         return -1;
-    } else if (fetch_integer_value(request, len, &pos, &length, &error_status) == -1) {
+    } else if (fetch_integer_value(input, len, &pos, &length, &request->error_status) == -1) {
         return -1;
     }
-    snmp_log("error-status: %d\n", error_status);
+    snmp_log("error-status: %d\n", request->error_status);
 
     /* error-index */
-    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+    if (fetch_type(input, len, &pos, &type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
         return -1;
     }
     if (type != BER_TYPE_INTEGER || length < 1) {
         snmp_log("bad SNMP error-index: type %02X length %d\n", type, length);
         return -1;
-    } else if (fetch_integer_value(request, len, &pos, &length, &error_index) == -1) {
+    } else if (fetch_integer_value(input, len, &pos, &length, &request->error_index) == -1) {
         return -1;
     }
-    snmp_log("error-index: %d\n", error_index);
+    snmp_log("error-index: %d\n", request->error_index);
 
     /* variable-bindings */
-    if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+    if (fetch_type(input, len, &pos, &type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
         return -1;
     }
     if (type != BER_TYPE_SEQUENCE || length != (*len - pos)) {
@@ -348,15 +404,15 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         return -1;
     }
     /* variable binding list */
-    var_bind_list_len = 0;
+    request->var_bind_list_len = 0;
     while (pos < *len) {
-        if (var_bind_list_len >= VAR_BIND_LEN) {
+        if (request->var_bind_list_len >= VAR_BIND_LEN) {
             snmp_log("maximum number of var bindings in the list is exceeded: max=%d\n", VAR_BIND_LEN);
             return -1;
         }
         
         /* sequence */
-        if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+        if (fetch_type(input, len, &pos, &type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
             return -1;
         }
         if (type != BER_TYPE_SEQUENCE || length < 1) {
@@ -365,31 +421,56 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         }
         
         /* OID */
-        if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+        if (fetch_type(input, len, &pos, &type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
             return -1;
         }
         if (type != BER_TYPE_OID || length < 1) {
             snmp_log("bad SNMP varbinding OID: type %02X length %d\n", type, length);
             return -1;
         }
-        if (fetch_oid(request, len, &pos, &length, &var_bind_list[var_bind_list_len]) == -1) {
+        if (fetch_oid(input, len, &pos, &length, &request->var_bind_list[request->var_bind_list_len]) == -1) {
             return -1;
         }
         /* value */
-        if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
+        if (fetch_type(input, len, &pos, &type) == -1 || !fetch_length(input, len, &pos, &length) == -1) {
             return -1;
         }
         if ((type == BER_TYPE_NULL && length != 0) || (type != BER_TYPE_NULL && length == 0)) {
             snmp_log("bad SNMP varbinding value: type %02X length %d\n", type, length);
             return -1;
-        } else if (fetch_void(request, len, &pos, &length) == -1) {
+        } else if (fetch_void(input, len, &pos, &length) == -1) {
             return -1;
         }
-        log_oid(&var_bind_list[var_bind_list_len]);
-        var_bind_list_len++;
+        log_oid(&request->var_bind_list[request->var_bind_list_len]);
+        request->var_bind_list_len++;
     }
 
     snmp_log("OK\n");
 
     return 0;
 }
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Handle an SNMP request
+ */
+int snmp_handler(const u8_t* const input, const u16_t* const len)
+{
+    static request_t request;
+
+    if (snmp_decode_request(input, len, &request) == -1) {
+        return -1;
+    }
+
+    if (request.version == SNMP_VERSION_2C || request.version == SNMP_VERSION_1) {
+/*        if (strcmp(g_community, request.community)) {
+            response.error_status = (request.version == SNMP_VERSION_2C)
+                    ? SNMP_STATUS_NO_ACCESS : SNMP_STATUS_GEN_ERR;
+            response.error_index = 0;
+            goto done;
+        }*/
+    }
+
+    return 0;
+}
+
