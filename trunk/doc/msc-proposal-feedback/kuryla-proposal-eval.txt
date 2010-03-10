@@ -1,0 +1,23 @@
+Siarhei Kuryla is working on an SNMP implementation for the embedded
+Contiki operating system, using UDP/IPv6/6LoWPAN/IEEE 802.15.4 as the
+underlying networking stack. The first chapter summarizes key
+characteristics of the IEEE 802.15.4 standards. The chapters 2-5
+provide a very nice overview of the state-of-the-art of IETF work done
+in the the 6lowpan and roll working groups. The summary of SNMP in
+chapter 5 is crisp as well. The writing style in general is very clear
+and concise, something I really appreciate.
+
+The weaker part of the proposal is the lack of an in depth discussion
+how SNMP can be used in constrained environments. While the references
+contain some related recently published papers, there is not much of a
+review of the various trade-offs that can impact performance and
+usability. In fact, a chapter following chapter 6 could be added
+discussing more details how SNMP can be fit into 6lowpan environments,
+a perfect place to discuss research work published in this space.  To
+be fair, I note that the selection of the topic happened relatively
+late and this is not Siarhei's fault. As such, I only comment on the
+absence of a more detailed discussion how SNMP can be best applied in
+6lowpans as means of documenting this; I will not count this for the
+grading of the proposal.
+
+Overall, I am satisfied with the proposal and I grade it with a 1.3.
