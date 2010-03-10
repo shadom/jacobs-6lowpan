@@ -41,8 +41,19 @@ PROCESS(snmpd_process, "SNMP daemon process");
  */
 static void udp_handler(process_event_t ev, process_data_t data)
 {
+    #if DEBUG && CONTIKI_TARGET_AVR_RAVEN
+    static u8_t request[UIP_APPDATA_SIZE];
+    static u16_t len;
+    #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
     if (ev == tcpip_event && uip_newdata()) {
+        #if DEBUG && CONTIKI_TARGET_AVR_RAVEN
+        len = uip_datalen();
+        memcpy(request, uip_appdata, len);
+        snmp_decode_request(request, &len);
+        #else
         snmp_decode_request((u8_t*)uip_appdata, &uip_datalen());
+        #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
+
     }
 }
 /*-----------------------------------------------------------------------------------*/
