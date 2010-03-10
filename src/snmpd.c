@@ -49,9 +49,9 @@ static void udp_handler(process_event_t ev, process_data_t data)
         #if DEBUG && CONTIKI_TARGET_AVR_RAVEN
         len = uip_datalen();
         memcpy(request, uip_appdata, len);
-        snmp_decode_request(request, &len);
+        snmp_handler(request, &len);
         #else
-        snmp_decode_request((u8_t*)uip_appdata, &uip_datalen());
+        snmp_handler((u8_t*)uip_appdata, &uip_datalen());
         #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
 
     }
