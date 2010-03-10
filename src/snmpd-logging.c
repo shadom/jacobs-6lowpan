@@ -68,9 +68,8 @@ void snmp_log(char* format, ... )
 {
     va_list args;
     va_start(args, format);
-    char buf[BUF_LEN];
-    memset(buf, 0, BUF_LEN);
     vprintf(format, args);
+    va_end(args);
 }
 #endif /* CONTIKI_TARGET_MINIMAL_NET */
 #endif /* DEBUG */
