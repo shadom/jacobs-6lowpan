@@ -60,25 +60,25 @@
 #define SNMP_VERSION_2C					1
 
 
-#define SNMP_STATUS_OK					0
-#define SNMP_STATUS_TOO_BIG				1
-#define SNMP_STATUS_NO_SUCH_NAME			2
-#define SNMP_STATUS_BAD_VALUE				3
-#define SNMP_STATUS_READ_ONLY				4
-#define SNMP_STATUS_GEN_ERR				5
-#define SNMP_STATUS_NO_ACCESS				6
-#define SNMP_STATUS_WRONG_TYPE				7
-#define SNMP_STATUS_WRONG_LENGTH			8
-#define SNMP_STATUS_WRONG_ENCODING			9
-#define SNMP_STATUS_WRONG_VALUE				10
-#define SNMP_STATUS_NO_CREATION				11
-#define SNMP_STATUS_INCONSISTENT_VALUE                  12
-#define SNMP_STATUS_RESOURCE_UNAVAILABLE                13
-#define SNMP_STATUS_COMMIT_FAILED			14
-#define SNMP_STATUS_UNDO_FAILED				15
-#define SNMP_STATUS_AUTHORIZATION_ERROR                 16
-#define SNMP_STATUS_NOT_WRITABLE			17
-#define SNMP_STATUS_INCONSISTENT_NAME                   18
+#define ERROR_STATUS_NO_ERROR					0
+#define ERROR_STATUS_TOO_BIG				1
+#define ERROR_STATUS_NO_SUCH_NAME			2
+#define ERROR_STATUS_BAD_VALUE				3
+#define ERROR_STATUS_READ_ONLY				4
+#define ERROR_STATUS_GEN_ERR				5
+#define ERROR_STATUS_NO_ACCESS				6
+#define ERROR_STATUS_WRONG_TYPE				7
+#define ERROR_STATUS_WRONG_LENGTH			8
+#define ERROR_STATUS_WRONG_ENCODING			9
+#define ERROR_STATUS_WRONG_VALUE				10
+#define ERROR_STATUS_NO_CREATION				11
+#define ERROR_STATUS_INCONSISTENT_VALUE                  12
+#define ERROR_STATUS_RESOURCE_UNAVAILABLE                13
+#define ERROR_STATUS_COMMIT_FAILED			14
+#define ERROR_STATUS_UNDO_FAILED				15
+#define ERROR_STATUS_AUTHORIZATION_ERROR                 16
+#define ERROR_STATUS_NOT_WRITABLE			17
+#define ERROR_STATUS_INCONSISTENT_NAME                   18
 
 typedef struct {
     u16_t values[OID_LEN];
@@ -86,6 +86,7 @@ typedef struct {
 } oid_t;
 
 typedef struct {
+    u8_t buffer[VAR_BIND_VALUE_LEN];
     int len;
 } varbind_value_t;
 
@@ -93,6 +94,8 @@ typedef struct {
     oid_t oid;
     varbind_value_t value;
 } varbind_t;
+
+static const varbind_value_t varbind_t_null = {"\x05\x00", 2};
 
 typedef struct {
     int version;
@@ -311,9 +314,9 @@ void log_oid(oid_t* o) {
 
 /*-----------------------------------------------------------------------------------*/
 /*
- * Decode a BER encoded SNMP request.
+ * Parse a BER encoded SNMP request.
  */
-int  snmp_decode_request(const u8_t* const input, const u16_t* const len, request_t* request)
+int  snmp_parse_request(const u8_t* const input, const u16_t* const len, request_t* request)
 {
     static u16_t pos, length;
     static u8_t type;
@@ -339,6 +342,8 @@ int  snmp_decode_request(const u8_t* const input, const u16_t* const len, reques
     } else if (fetch_integer_value(input, len, &pos, &length, &request->version) == -1) {
         return -1;
     } else if (request->version != SNMP_VERSION_1 && request->version != SNMP_VERSION_2C) {
+        /* it then verifies the version number of the SNMP message.  */
+        /* if there is no mismatch, it discards the datagram and performs no further actions. */
         snmp_log("unsupported SNMP version %d\n", request->version);
         return -1;
     }
@@ -461,7 +466,7 @@ int  snmp_decode_request(const u8_t* const input, const u16_t* const len, reques
         request->var_bind_list_len++;
     }
 
-    snmp_log("OK\n");
+    snmp_log("parsing finished: OK\n");
 
     return 0;
 }
@@ -471,6 +476,7 @@ int  snmp_decode_request(const u8_t* const input, const u16_t* const len, reques
  * Handle an SNMP GET request
  */
 int snmp_handle_get(request_t* request, response_t* response) {
+    response->error_status = ERROR_STATUS_GEN_ERR;
     return 0;
 }
 
@@ -479,6 +485,19 @@ int snmp_handle_get(request_t* request, response_t* response) {
  * Encode an SNMP response
  */
 int snmp_encode_response(request_t* request, response_t* response) {
+    /* if, for any object named in the variable-bindings field,
+       an error occurs, then the receiving entity sends to the originator
+       of the received message the message of identical form, 
+       except that the value of the error-status field is set */
+    if (response->error_status != ERROR_STATUS_NO_ERROR) {
+        int i;
+        response->var_bind_list_len = request->var_bind_list_len;
+        for (i = 0; i < response->var_bind_list_len; i++) {
+            memcpy(&response->var_bind_list[i].oid, &request->var_bind_list[i], sizeof (oid_t));
+            memcpy(&response->var_bind_list[i].value, &varbind_t_null, 4);
+        }
+    }
+
     return 0;
 }
 
@@ -491,24 +510,27 @@ int snmp_handler(const u8_t* const input, const u16_t* const len)
     static request_t request;
     static response_t response;
 
-    /* decode the request */
-    if (snmp_decode_request(input, len, &request) == -1) {
+    /* parse the incoming datagram and build an ASN.1 object */
+    if (snmp_parse_request(input, len, &request) == -1) {
+        /* if the parse fails, it discards the datagram and performs no further actions. */
         return -1;
     }
 
     memset(&response, 0, sizeof(response_t));
 
-    /* secutiry check */
-    if (request.version == SNMP_VERSION_2C || request.version == SNMP_VERSION_1) {
-        if (strcmp(COMMUNITY_STRING, (char*)request.community)) {
-            response.error_status = (request.version == SNMP_VERSION_2C) ? SNMP_STATUS_NO_ACCESS : SNMP_STATUS_GEN_ERR;
-            response.error_index = 0;
-            snmp_log("wrong community string \"%s\"\n", request.community);
-        }
+    /* authentication scheme */
+    if (strcmp(COMMUNITY_STRING, (char*)request.community)) {
+        /* the protocol entity notes this failure, (possibly) generates a trap, and discards the datagram
+         and performs no further actions. */
+        response.error_status = (request.version == SNMP_VERSION_2C) ? ERROR_STATUS_NO_ACCESS : ERROR_STATUS_GEN_ERR;
+        response.error_index = 0;
+        snmp_log("wrong community string \"%s\"\n", request.community);
+    } else {
+        snmp_log("authentication passed\n");
     }
 
     /* request processing */
-    if (request.error_status == SNMP_STATUS_OK) {
+    if (request.error_status == ERROR_STATUS_NO_ERROR) {
         if (request.request_type == BER_TYPE_SNMP_GET) {
             snmp_handle_get(&request, &response);
         }
@@ -519,7 +541,7 @@ int snmp_handler(const u8_t* const input, const u16_t* const len)
             return -1;
     }
 
-
+    snmp_log("processing finished\n---------------------------------\n");
     return 0;
 }
 

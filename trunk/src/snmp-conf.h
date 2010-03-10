@@ -36,10 +36,14 @@
 #define COMMUNITY_STRING_LEN    32
 
 /** maximum number of variable bindings in a request */
-#define VAR_BIND_LEN            32
+#define VAR_BIND_LEN            16
 
 /** maximum number of elements in an OID */
 #define OID_LEN                 20
+
+/** maximum length of the value of a variable bindings in a response */
+#define VAR_BIND_VALUE_LEN      128
+
 
 #endif	/* __SNMP_CONF_H__ */
 
