@@ -79,7 +79,7 @@ static char fetch_type(const u8_t* const request, const u16_t* const len, u16_t*
                 return -1;
         }
     } else {
-        snmp_log("unexpected end of the SNMP request [1]\n");
+        snmp_log("unexpected end of the SNMP request (pos=%d, len=%d) [1]\n", *pos, *len);
         return -1;
     }
     return 0;
@@ -147,10 +147,11 @@ static char fetch_integer_value(const u8_t* const request, const u16_t* const le
 /*
  * Decode a BER encoded unsigned integer value.
  */
-static char fetch_octet_string(const char* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, char* value, u8_t value_len)
+static char fetch_octet_string(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, u8_t* value, u8_t value_len)
 {
     if (*pos + *field_len - 1 < *len) {
-        snprintf(value, value_len, "%.*s", *field_len, &request[*pos]);
+        memcpy(value, &request[*pos], *field_len);
+        value[*field_len] = 0;
         *pos = *pos + *field_len;
     } else {
         snmp_log("can't fetch an octet string: unexpected end of the SNMP request\n");
@@ -239,14 +240,14 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
     static u16_t pos, length;
     static u8_t type;
     static int version;
-    static char community[COMMUNITY_STRING_LEN];
+    static u8_t community[COMMUNITY_STRING_LEN];
     static u8_t request_type;
     static int request_id, error_status, error_index;
     static u8_t var_bind_list_len;
     static oid var_bind_list[VAR_BIND_LEN];
     
     pos = 0;
-
+    
     /* Sequence */
     if (fetch_type(request, len, &pos, &type) == -1 || fetch_length(request, len, &pos, &length) == -1) {
         return -1;
@@ -255,7 +256,7 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         snmp_log("bad SNMP header: type %02X length %d\n", type, length);
         return -1;
     }
-
+    
     /* version */
     if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
         return -1;
@@ -270,7 +271,7 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
         return -1;
     }
     snmp_log("snmp version: %d\n", version);
-
+    
     /* community name */
     if (fetch_type(request, len, &pos, &type) == -1 || !fetch_length(request, len, &pos, &length) == -1) {
         return -1;
@@ -278,12 +279,14 @@ u8_t snmp_decode_request(const u8_t* const request, const u16_t* const len)
     if (type != BER_TYPE_OCTET_STRING) {
         snmp_log("SNMP community string must of type %02X, byt not %02X\n", BER_TYPE_OCTET_STRING, type);
         return -1;
-    } else if (length >= COMMUNITY_STRING_LEN) {
+    }
+    if (length >= COMMUNITY_STRING_LEN) {
         snmp_log("community string is too long (must be up to 31 character)\n");
         return -1;
-    } else if (fetch_octet_string((char*)request, len, &pos, &length, community, COMMUNITY_STRING_LEN) == -1) {
+    }    
+    if (fetch_octet_string((u8_t*)request, len, &pos, &length, community, COMMUNITY_STRING_LEN) == -1) {
         return -1;
-    } else if (strlen(community) < 1) {
+    } else if (strlen((char*)community) < 1) {
         snmp_log("unsupported SNMP community '%s'\n", community);
         return -1;
     }

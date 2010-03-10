@@ -35,7 +35,7 @@
 /** \brief length of the buffer used for debugging messages */
 #define BUF_LEN 100
 
-#if !CONTIKI_TARGET_MINIMAL_NET
+#if !CONTIKI_TARGET_MINIMAL_NET 
 #include "contiki-net.h"
 
 /** \brief port number where debug messages are sent */
