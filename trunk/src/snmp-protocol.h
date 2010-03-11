@@ -31,7 +31,7 @@
 
 #include "contiki.h"
 
-int snmp_handler(const u8_t* const input,  const u16_t* const len);
+int snmp_handler(const u8_t* const input,  const u16_t* const input_len, u8_t* output, u16_t* output_len, const u16_t max_output_len);
 
 #endif	/* __SNMP_PROTOCOL_H__ */
 
