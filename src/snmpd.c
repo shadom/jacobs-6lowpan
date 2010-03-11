@@ -31,7 +31,13 @@
 #include "snmpd-utils.h"
 #include "snmpd-logging.h"
 
+#define UDP_IP_BUF   ((struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN])
+
+/* UDP connection*/
 static struct uip_udp_conn *udpconn;
+
+/* maximum length of the payload of incoming and outgoing UDP datagrams */
+#define MAX_BUF_SIZE UIP_APPDATA_SIZE
 
 PROCESS(snmpd_process, "SNMP daemon process");
 
@@ -41,19 +47,44 @@ PROCESS(snmpd_process, "SNMP daemon process");
  */
 static void udp_handler(process_event_t ev, process_data_t data)
 {
+    static u8_t respond[MAX_BUF_SIZE];
+    static u16_t resp_len;
+    
     #if DEBUG && CONTIKI_TARGET_AVR_RAVEN
-    static u8_t request[UIP_APPDATA_SIZE];
-    static u16_t len;
+    static u8_t request[MAX_BUF_SIZE];
+    static u16_t req_len;
     #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
     if (ev == tcpip_event && uip_newdata()) {
+        uip_ipaddr_copy(&udpconn->ripaddr, &UDP_IP_BUF->srcipaddr);
+        udpconn->rport = UDP_IP_BUF->srcport;
+        uip_udp_packet_send(udpconn, "ABC", 3);
+
         #if DEBUG && CONTIKI_TARGET_AVR_RAVEN
-        len = uip_datalen();
-        memcpy(request, uip_appdata, len);
-        snmp_handler(request, &len);
+        req_len = uip_datalen();
+        memcpy(request, uip_appdata, req_len);
+        if (snmp_handler(request, &req_len, respond, resp_len, MAX_BUF_SIZE) == -1) {
+            return;
+        }
         #else
-        snmp_handler((u8_t*)uip_appdata, &uip_datalen());
+
+/*
+        resp_len = MAX_BUF_SIZE - 1;
+        int i;
+        for (i = 0; i < resp_len; i++) {
+            respond[i] = 64 + i / 100;
+        }
+        respond[MAX_BUF_SIZE - 1] = 0;
+*/
+
+        if (snmp_handler((u8_t*)uip_appdata, &uip_datalen(), respond, &resp_len, MAX_BUF_SIZE) == -1) {
+            return;
+        }
         #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
 
+        //uip_udp_packet_send(udpconn, respond, resp_len);
+
+        memset(&udpconn->ripaddr, 0, sizeof(udpconn->ripaddr));
+        udpconn->rport = 0;
     }
 }
 /*-----------------------------------------------------------------------------------*/

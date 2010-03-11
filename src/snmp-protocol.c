@@ -80,6 +80,13 @@
 #define ERROR_STATUS_NOT_WRITABLE			17
 #define ERROR_STATUS_INCONSISTENT_NAME                   18
 
+#define DECN(pos, value) (*pos) -= value; if (*pos < 0) { snmp_log("too big message: %d", __LINE__); return -1;}
+
+#define DEC(pos) DECN(pos, 1)
+
+#define TRY(c) if (c == -1) { return -1; }
+
+
 typedef struct {
     u16_t values[OID_LEN];
     short len;
@@ -245,13 +252,17 @@ static int fetch_oid(const u8_t* const request, const u16_t* const len, u16_t* p
 {
     if (*pos + *field_len -1 < *len) {
         o->len = 0;
+        /* The first element after the length contains two OID values.
+         * The first value can be obtained by dividing this element by 40.
+         * The second data element can be obtained by taking the remainder from the previous division.
+         */
         if (!(request[*pos] & 0x80)) {
             o->values[o->len++] = request[*pos] / 40;
             o->values[o->len++] = request[*pos] % 40;
             *pos = *pos + 1;
             (*field_len)--;
         } else {
-            snmp_log("first bit of the oid must be set\n");
+            snmp_log("first bit of the oid must not be set\n");
             return -1;
         }
 
@@ -263,6 +274,9 @@ static int fetch_oid(const u8_t* const request, const u16_t* const len, u16_t* p
                 return -1;
             }
             while ((*field_len)--) {
+                /* Check bit 8 to see of there are more octets that make up this element of the OID.
+                 * If bit 8 is set, then multiply the octet by 128 and then add the lower bits to the result.
+                 */
                 o->values[o->len] = (o->values[o->len] << 7) + (request[*pos] & 0x7F);
                 if (request[*pos] & 0x80) {
                     if ((*field_len) == 0) {
@@ -475,8 +489,159 @@ int  snmp_parse_request(const u8_t* const input, const u16_t* const len, request
 /*
  * Handle an SNMP GET request
  */
-int snmp_handle_get(request_t* request, response_t* response) {
+int snmp_handle_get(request_t* request, response_t* response)
+{
     response->error_status = ERROR_STATUS_GEN_ERR;
+    response->error_index = 1;
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Write a BER encoded length to the buffer
+ */
+static int write_length(u8_t* output, int* pos, int* length) {
+    if (*length > 0xFF) {
+        DECN(pos, 3);
+        /* first "the length of the length" goes in octets */
+        /* the bit 0x80 of the first byte is set to show that the length is composed of multiple octets */
+        output[*pos] = 0x82;
+        output[*pos + 1] = ((*length) >> 8) & 0xFF;
+        output[*pos + 2] = (*length) & 0xFF;
+    } else if (*length > 0x7F) {
+        DECN(pos, 2);
+        output[*pos] = 0x81;
+	output[*pos + 1] = (*length) & 0xFF;
+    } else {
+        DEC(pos);
+        output[*pos] = (*length) & 0x7F;
+    }
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Write a BER encoded variable binding to the buffer
+ */
+int write_type_length(u8_t* output, int* pos, u8_t type, int *len)
+{
+    write_length(output, pos, len);
+    DEC(pos);
+    output[*pos] = type;
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Write a BER encoded oid to the buffer
+ */
+static int write_oid(u8_t* output, int* pos, oid_t* oid)
+{
+    int length, oid_length;
+    int i, j;
+
+    oid_length = 1;
+    
+    /* encode oids from the last to the 2nd */
+    for (i = oid->len - 1; i >= 2; i--) {
+        if (oid->values[i] >= (1 << 28)) {
+            length = 5;
+        } else if (oid->values[i] >= (1 << 21)) {
+            length = 4;
+        } else if (oid->values[i] >= (1 << 14)) {
+            length = 3;
+        } else if (oid->values[i] >= (1 << 7)) {
+            length = 2;
+        } else {
+            length = 1;
+        }
+        oid_length += length;
+        DECN(pos,  length);
+        for (j = length - 1; j >= 0; j--) {
+            if (j) {
+                output[*pos + length - j - 1] = ((oid->values[i] >> (7 * j)) & 0x7F) | 0x80;
+            } else {
+                output[*pos + length - j - 1] = ((oid->values[i] >> (7 * j)) & 0x7F);
+            }
+        }
+    }
+    /* the value of the first 2 oid elements are enconded in the first byte as = 40 * 1st + 2nd */
+    DEC(pos);
+    output[*pos] = oid->values[0] * 40 + oid->values[1];
+
+    /* type and length */
+    TRY(write_type_length(output, pos, BER_TYPE_OID, &oid_length));
+
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Write a BER encoded variable binding to the buffer
+ */
+int write_var_bind(u8_t* output, int* pos, varbind_t* varbind)
+{
+    /* write the variable binding in the reverse order */
+    int len_pos = *pos;
+    /* value */
+    DECN(pos, varbind->value.len);
+    memcpy(output + (*pos), varbind->value.buffer, varbind->value.len);
+
+    /* oid */
+    TRY(write_oid(output, pos, &varbind->oid));
+    /* sequence header*/
+    len_pos -= *pos;
+    TRY(write_type_length(output, pos, BER_TYPE_SEQUENCE, &len_pos));
+            
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Write a BER encoded integer to the buffer
+ */
+int write_integer(u8_t* output, int* pos, int* value)
+{
+    int init_pos = *pos, length, j;
+
+    /* get the length of the BER encoded integer value in bytes */
+    if (*value < -16777216 || *value > 16777215) {
+        length = 4;
+    } else if (*value < -32768 || *value > 32767) {
+        length = 3;
+    } else if (*value < -128 || *value > 127) {
+        length = 2;
+    } else {
+        length = 1;
+    }
+
+    /* write integer value */
+    DECN(pos, length);
+    for (j = length - 1; j >= 0; j--) {
+        output[*pos + (length - 1) - j] = ((unsigned int)*value >> (8 * j)) & 0xFF;
+    }
+
+    /* write type and length */
+    length = init_pos - *pos;
+    TRY(write_type_length(output, pos, BER_TYPE_INTEGER, &length));
+
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Write a BER encoded string value to the buffer
+ */
+int write_string(u8_t* output, int* pos, u8_t* str_value)
+{
+    /* string value */
+    int len = strlen((char*)str_value);
+    DECN(pos, len);
+    memcpy(output + *pos, str_value, len);
+
+    /* type and length */
+    TRY(write_type_length(output, pos, BER_TYPE_OCTET_STRING, &len));
+
     return 0;
 }
 
@@ -484,7 +649,10 @@ int snmp_handle_get(request_t* request, response_t* response) {
 /*
  * Encode an SNMP response
  */
-int snmp_encode_response(request_t* request, response_t* response) {
+int snmp_write_response(request_t* request, response_t* response, u8_t* output, u16_t* output_len, const u16_t max_output_len)
+{
+    /* TODO: don't forget about too big */
+
     /* if, for any object named in the variable-bindings field,
        an error occurs, then the receiving entity sends to the originator
        of the received message the message of identical form, 
@@ -494,8 +662,45 @@ int snmp_encode_response(request_t* request, response_t* response) {
         response->var_bind_list_len = request->var_bind_list_len;
         for (i = 0; i < response->var_bind_list_len; i++) {
             memcpy(&response->var_bind_list[i].oid, &request->var_bind_list[i], sizeof (oid_t));
-            memcpy(&response->var_bind_list[i].value, &varbind_t_null, 4);
+            response->var_bind_list[i].value.len = varbind_t_null.len;
+            memcpy(&response->var_bind_list[i].value.buffer, &varbind_t_null.buffer, response->var_bind_list[i].value.len);            
         }
+    }
+    int pos = max_output_len;
+    int i;
+
+    /* write in the reverse order */
+
+    /* variable binding list */
+    for (i = response->var_bind_list_len - 1; i >= 0; i--) {
+        TRY(write_var_bind(output, &pos, &response->var_bind_list[i]));
+    }
+    int len = max_output_len - pos;
+    TRY(write_type_length(output, &pos, BER_TYPE_SEQUENCE, &len));
+
+    /* error index */
+    TRY(write_integer(output, &pos, &response->error_index));
+    /* error status */
+    TRY(write_integer(output, &pos, &response->error_status));
+    /* request id */
+    TRY(write_integer(output, &pos, &request->request_id));
+
+    /* sequence header*/
+    len = max_output_len - pos;
+    TRY(write_type_length(output, &pos, BER_TYPE_SNMP_RESPONSE, &len));
+
+    /* community string */
+    TRY(write_string(output, &pos, request->community));
+    /* version */
+    TRY(write_integer(output, &pos, &request->version));
+
+    /* sequence header*/
+    len = max_output_len - pos;
+    TRY(write_type_length(output, &pos, BER_TYPE_SEQUENCE, &len));
+
+    *output_len = max_output_len - pos;
+    if (pos > 0) {
+        memmove(output, output + pos, *output_len);
     }
 
     return 0;
@@ -505,13 +710,13 @@ int snmp_encode_response(request_t* request, response_t* response) {
 /*
  * Handle an SNMP request
  */
-int snmp_handler(const u8_t* const input, const u16_t* const len)
+int snmp_handler(const u8_t* const input,  const u16_t* const input_len, u8_t* output, u16_t* output_len, const u16_t max_output_len)
 {
     static request_t request;
     static response_t response;
 
     /* parse the incoming datagram and build an ASN.1 object */
-    if (snmp_parse_request(input, len, &request) == -1) {
+    if (snmp_parse_request(input, input_len, &request) == -1) {
         /* if the parse fails, it discards the datagram and performs no further actions. */
         return -1;
     }
@@ -537,7 +742,7 @@ int snmp_handler(const u8_t* const input, const u16_t* const len)
     }
 
     /* encode the response */
-    if (snmp_encode_response(&request, &response) == -1) {
+    if (snmp_write_response(&request, &response, output, output_len, max_output_len) == -1) {
             return -1;
     }
 
