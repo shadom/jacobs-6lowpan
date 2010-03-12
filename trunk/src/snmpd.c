@@ -55,8 +55,8 @@ static void udp_handler(process_event_t ev, process_data_t data)
     static u16_t req_len;
     #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
     if (ev == tcpip_event && uip_newdata()) {
+        uip_ipaddr_copy(&udpconn->ripaddr, &UDP_IP_BUF->srcipaddr);
         udpconn->rport = UDP_IP_BUF->srcport;
-        uip_udp_packet_send(udpconn, "ABC", 3);
 
         #if DEBUG && CONTIKI_TARGET_AVR_RAVEN
         req_len = uip_datalen();
@@ -80,6 +80,7 @@ static void udp_handler(process_event_t ev, process_data_t data)
         }
         #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
 
+        udpconn->rport = UDP_IP_BUF->srcport;
         uip_udp_packet_send(udpconn, respond, resp_len);
 
         memset(&udpconn->ripaddr, 0, sizeof(udpconn->ripaddr));
