@@ -23,7 +23,7 @@
 #include <stdio.h>
 
 #include "snmp-protocol.h"
-#include "snmp-conf.h"
+#include "snmpd-conf.h"
 #include "snmpd-logging.h"
 
 /*
@@ -70,15 +70,15 @@
 #define ERROR_STATUS_WRONG_TYPE				7
 #define ERROR_STATUS_WRONG_LENGTH			8
 #define ERROR_STATUS_WRONG_ENCODING			9
-#define ERROR_STATUS_WRONG_VALUE				10
-#define ERROR_STATUS_NO_CREATION				11
-#define ERROR_STATUS_INCONSISTENT_VALUE                  12
-#define ERROR_STATUS_RESOURCE_UNAVAILABLE                13
+#define ERROR_STATUS_WRONG_VALUE			10
+#define ERROR_STATUS_NO_CREATION			11
+#define ERROR_STATUS_INCONSISTENT_VALUE                 12
+#define ERROR_STATUS_RESOURCE_UNAVAILABLE               13
 #define ERROR_STATUS_COMMIT_FAILED			14
-#define ERROR_STATUS_UNDO_FAILED				15
-#define ERROR_STATUS_AUTHORIZATION_ERROR                 16
+#define ERROR_STATUS_UNDO_FAILED			15
+#define ERROR_STATUS_AUTHORIZATION_ERROR                16
 #define ERROR_STATUS_NOT_WRITABLE			17
-#define ERROR_STATUS_INCONSISTENT_NAME                   18
+#define ERROR_STATUS_INCONSISTENT_NAME                  18
 
 #define DECN(pos, value) (*pos) -= value; if (*pos < 0) { snmp_log("too big message: %d", __LINE__); return -1;}
 
@@ -89,7 +89,7 @@
 
 typedef struct {
     u16_t values[OID_LEN];
-    u8_t len;
+    u16_t len;
 } oid_t;
 
 typedef struct {
