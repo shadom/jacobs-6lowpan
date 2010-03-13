@@ -37,7 +37,7 @@
 static struct uip_udp_conn *udpconn;
 
 /* maximum length of the payload of incoming and outgoing UDP datagrams */
-#define MAX_BUF_SIZE UIP_APPDATA_SIZE
+#define MAX_BUF_SIZE 200//UIP_APPDATA_SIZE
 
 PROCESS(snmpd_process, "SNMP daemon process");
 
@@ -80,7 +80,6 @@ static void udp_handler(process_event_t ev, process_data_t data)
         }
         #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
 
-        udpconn->rport = UDP_IP_BUF->srcport;
         uip_udp_packet_send(udpconn, respond, resp_len);
 
         memset(&udpconn->ripaddr, 0, sizeof(udpconn->ripaddr));

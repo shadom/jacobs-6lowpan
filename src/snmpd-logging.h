@@ -30,7 +30,11 @@
 #define __SNMPD_LOGGING_H__
 
 /** \brief indicates whether debug is enabled */
-#define DEBUG 1
+#define DEBUG 0
+
+/** \brief indicates whether info messages are enabled */
+#define INFO 1
+
 
 #if DEBUG
 /**
@@ -46,5 +50,21 @@ void snmp_log(char* format, ...);
 #else
 #define snmp_log(...)
 #endif /* DEBUG */
+
+#if INFO
+/**
+ * Log a message.
+ *
+ * \param m A pointer to a string containing a message.
+ *
+ * \sa log()
+ *
+ * \hideinitializer
+ */
+void snmp_info(char* format, ...);
+#else
+#define snmp_info(...)
+#endif /* INFO */
+
 
 #endif /* __SNMPD_LOGGING_H__ */
