@@ -543,7 +543,8 @@ s8_t write_type_length(u8_t* output, s16_t* pos, u8_t type, u16_t *len)
 static s8_t write_oid(u8_t* output, s16_t* pos, oid_t* oid)
 {
     static u8_t length;
-    static u8_t i, j;
+    static u8_t i;
+    static s8_t j;
     static u16_t oid_length;
 
     oid_length = 1;
