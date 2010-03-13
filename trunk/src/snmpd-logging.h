@@ -33,7 +33,7 @@
 #define DEBUG 0
 
 /** \brief indicates whether info messages are enabled */
-#define INFO 1
+#define INFO 0
 
 
 #if DEBUG
