@@ -89,12 +89,12 @@
 
 typedef struct {
     u16_t values[OID_LEN];
-    short len;
+    u8_t len;
 } oid_t;
 
 typedef struct {
     u8_t buffer[VAR_BIND_VALUE_LEN];
-    int len;
+    u8_t len;
 } varbind_value_t;
 
 typedef struct {
@@ -105,20 +105,20 @@ typedef struct {
 static const varbind_value_t varbind_t_null = {"\x05\x00", 2};
 
 typedef struct {
-    int version;
+    u8_t version;
     u8_t community[COMMUNITY_STRING_LEN];
     u8_t request_type;
-    int request_id;
-    int error_status;
-    int error_index;
+    s32_t request_id;
+    u8_t error_status;
+    u8_t error_index;
     u8_t var_bind_list_len;
     oid_t var_bind_list[VAR_BIND_LEN];
 } request_t;
 
 typedef struct {
-    int error_status;
-    int error_index;
-    int var_bind_list_len;
+    u8_t error_status;
+    u8_t error_index;
+    u8_t var_bind_list_len;
     varbind_t var_bind_list[VAR_BIND_LEN];
 } response_t;
 
@@ -126,7 +126,7 @@ typedef struct {
 /*
  * Decode a BER encoded SNMP message.
  */
-static int fetch_type(const u8_t* const request, const u16_t* const len, u16_t* pos, u8_t* type)
+static s8_t fetch_type(const u8_t* const request, const u16_t* const len, u16_t* pos, u8_t* type)
 {
     if (*pos < *len) {
         switch (request[*pos]) {
@@ -174,7 +174,7 @@ static int fetch_type(const u8_t* const request, const u16_t* const len, u16_t* 
 /*
  * Decode a BER encoded length field.
  */
-static int fetch_length(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* length)
+static s8_t fetch_length(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* length)
 {
     if (*pos < *len) {
         /* length is encoded in a single length byte */
@@ -212,7 +212,7 @@ static int fetch_length(const u8_t* const request, const u16_t* const len, u16_t
 /*
  * Decode a BER encoded integer value.
  */
-static int fetch_integer_value(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, int* value)
+static s8_t fetch_integer_value(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, s32_t* value)
 {
     if (*pos + *field_len - 1 < *len) {
         memset(value, (request[*pos] & 0x80) ? 0xFF : 0x00, sizeof (*value));
@@ -231,7 +231,7 @@ static int fetch_integer_value(const u8_t* const request, const u16_t* const len
 /*
  * Decode a BER encoded unsigned integer value.
  */
-static int fetch_octet_string(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, u8_t* value, u8_t value_len)
+static s8_t fetch_octet_string(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, u8_t* value, u8_t value_len)
 {
     if (*pos + *field_len - 1 < *len) {
         memcpy(value, &request[*pos], *field_len);
@@ -248,7 +248,7 @@ static int fetch_octet_string(const u8_t* const request, const u16_t* const len,
 /*
  * Decode a BER encoded OID.
  */
-static int fetch_oid(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, oid_t* o )
+static s8_t fetch_oid(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len, oid_t* o )
 {
     if (*pos + *field_len -1 < *len) {
         o->len = 0;
@@ -302,7 +302,7 @@ static int fetch_oid(const u8_t* const request, const u16_t* const len, u16_t* p
 /*
  * Decode a BER encoded void value.
  */
-static int fetch_void(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len)
+static s8_t fetch_void(const u8_t* const request, const u16_t* const len, u16_t* pos, u16_t* field_len)
 {
     if (*pos + *field_len - 1 < *len) {
         *pos = *pos + *field_len;
@@ -316,7 +316,7 @@ static int fetch_void(const u8_t* const request, const u16_t* const len, u16_t* 
 
 #if DEBUG
 void log_oid(oid_t* o) {
-    int i;
+    s8_t i;
     for (i = 0; i < o->len - 1; i++) {
         printf("%d.", o->values[i]);
     }
@@ -330,10 +330,11 @@ void log_oid(oid_t* o) {
 /*
  * Parse a BER encoded SNMP request.
  */
-int  snmp_parse_request(const u8_t* const input, const u16_t* const len, request_t* request)
+s8_t  snmp_parse_request(const u8_t* const input, const u16_t* const len, request_t* request)
 {
     static u16_t pos, length;
     static u8_t type;
+    static s32_t tmp;
    
     pos = 0;
     
@@ -353,9 +354,11 @@ int  snmp_parse_request(const u8_t* const input, const u16_t* const len, request
     if (type != BER_TYPE_INTEGER || length != 1) {
         snmp_log("bad SNMP version: type %02X length %d\n", type, length);
         return -1;
-    } else if (fetch_integer_value(input, len, &pos, &length, &request->version) == -1) {
+    } else if (fetch_integer_value(input, len, &pos, &length, &tmp) == -1) {
         return -1;
-    } else if (request->version != SNMP_VERSION_1 && request->version != SNMP_VERSION_2C) {
+    }
+    request->version = (u8_t)tmp;
+    if (request->version != SNMP_VERSION_1 && request->version != SNMP_VERSION_2C) {
         /* it then verifies the version number of the SNMP message.  */
         /* if there is no mismatch, it discards the datagram and performs no further actions. */
         snmp_log("unsupported SNMP version %d\n", request->version);
@@ -413,9 +416,10 @@ int  snmp_parse_request(const u8_t* const input, const u16_t* const len, request
     if (type != BER_TYPE_INTEGER || length < 1) {
         snmp_log("bad SNMP error-status: type %02X length %d\n", type, length);
         return -1;
-    } else if (fetch_integer_value(input, len, &pos, &length, &request->error_status) == -1) {
+    } else if (fetch_integer_value(input, len, &pos, &length, &tmp) == -1) {
         return -1;
     }
+    request->error_status = (u8_t)tmp;
     snmp_log("error-status: %d\n", request->error_status);
 
     /* error-index */
@@ -425,9 +429,10 @@ int  snmp_parse_request(const u8_t* const input, const u16_t* const len, request
     if (type != BER_TYPE_INTEGER || length < 1) {
         snmp_log("bad SNMP error-index: type %02X length %d\n", type, length);
         return -1;
-    } else if (fetch_integer_value(input, len, &pos, &length, &request->error_index) == -1) {
+    } else if (fetch_integer_value(input, len, &pos, &length, &tmp) == -1) {
         return -1;
     }
+    request->error_index = (u8_t)tmp;
     snmp_log("error-index: %d\n", request->error_index);
 
     /* variable-bindings */
@@ -489,7 +494,7 @@ int  snmp_parse_request(const u8_t* const input, const u16_t* const len, request
 /*
  * Handle an SNMP GET request
  */
-int snmp_handle_get(request_t* request, response_t* response)
+s8_t snmp_handle_get(request_t* request, response_t* response)
 {
     response->error_status = ERROR_STATUS_GEN_ERR;
     response->error_index = 1;
@@ -500,7 +505,7 @@ int snmp_handle_get(request_t* request, response_t* response)
 /*
  * Write a BER encoded length to the buffer
  */
-static int write_length(u8_t* output, int* pos, int* length) {
+static s8_t write_length(u8_t* output, s16_t* pos, u16_t* length) {
     if (*length > 0xFF) {
         DECN(pos, 3);
         /* first "the length of the length" goes in octets */
@@ -523,7 +528,7 @@ static int write_length(u8_t* output, int* pos, int* length) {
 /*
  * Write a BER encoded variable binding to the buffer
  */
-int write_type_length(u8_t* output, int* pos, u8_t type, int *len)
+s8_t write_type_length(u8_t* output, s16_t* pos, u8_t type, u16_t *len)
 {
     write_length(output, pos, len);
     DEC(pos);
@@ -535,22 +540,23 @@ int write_type_length(u8_t* output, int* pos, u8_t type, int *len)
 /*
  * Write a BER encoded oid to the buffer
  */
-static int write_oid(u8_t* output, int* pos, oid_t* oid)
+static s8_t write_oid(u8_t* output, s16_t* pos, oid_t* oid)
 {
-    int length, oid_length;
-    int i, j;
+    static u8_t length;
+    static u8_t i, j;
+    static u16_t oid_length;
 
     oid_length = 1;
     
     /* encode oids from the last to the 2nd */
     for (i = oid->len - 1; i >= 2; i--) {
-        if (oid->values[i] >= (1 << 28)) {
+        if (oid->values[i] >= (268435456)) { // 2 ^ 28
             length = 5;
-        } else if (oid->values[i] >= (1 << 21)) {
+        } else if (oid->values[i] >= (2097152)) { // 2 ^ 21
             length = 4;
-        } else if (oid->values[i] >= (1 << 14)) {
+        } else if (oid->values[i] >= 16384) { // 2 ^ 14
             length = 3;
-        } else if (oid->values[i] >= (1 << 7)) {
+        } else if (oid->values[i] >= 128) { // 2 ^ 7
             length = 2;
         } else {
             length = 1;
@@ -579,10 +585,10 @@ static int write_oid(u8_t* output, int* pos, oid_t* oid)
 /*
  * Write a BER encoded variable binding to the buffer
  */
-int write_var_bind(u8_t* output, int* pos, varbind_t* varbind)
+s8_t write_var_bind(u8_t* output, s16_t* pos, varbind_t* varbind)
 {
     /* write the variable binding in the reverse order */
-    int len_pos = *pos;
+    u16_t len_pos = *pos;
     /* value */
     DECN(pos, varbind->value.len);
     memcpy(output + (*pos), varbind->value.buffer, varbind->value.len);
@@ -600,9 +606,11 @@ int write_var_bind(u8_t* output, int* pos, varbind_t* varbind)
 /*
  * Write a BER encoded integer to the buffer
  */
-int write_integer(u8_t* output, int* pos, int* value)
+s8_t write_integer(u8_t* output, s16_t* pos, s32_t* value)
 {
-    int init_pos = *pos, length, j;
+    s16_t init_pos = *pos;
+    u16_t length;
+    s8_t j;
 
     /* get the length of the BER encoded integer value in bytes */
     if (*value < -16777216 || *value > 16777215) {
@@ -618,7 +626,7 @@ int write_integer(u8_t* output, int* pos, int* value)
     /* write integer value */
     DECN(pos, length);
     for (j = length - 1; j >= 0; j--) {
-        output[*pos + (length - 1) - j] = ((unsigned int)*value >> (8 * j)) & 0xFF;
+        output[*pos + (length - 1) - j] = (((u32_t)*value) >> (8 * j)) & 0xFF;
     }
 
     /* write type and length */
@@ -632,10 +640,10 @@ int write_integer(u8_t* output, int* pos, int* value)
 /*
  * Write a BER encoded string value to the buffer
  */
-int write_string(u8_t* output, int* pos, u8_t* str_value)
+s8_t write_string(u8_t* output, s16_t* pos, u8_t* str_value)
 {
     /* string value */
-    int len = strlen((char*)str_value);
+    u16_t len = strlen((char*)str_value);
     DECN(pos, len);
     memcpy(output + *pos, str_value, len);
 
@@ -649,16 +657,17 @@ int write_string(u8_t* output, int* pos, u8_t* str_value)
 /*
  * Encode an SNMP response
  */
-int snmp_write_response(request_t* request, response_t* response, u8_t* output, u16_t* output_len, const u16_t max_output_len)
+s8_t snmp_write_response(request_t* request, response_t* response, u8_t* output, u16_t* output_len, const u16_t max_output_len)
 {
     /* TODO: don't forget about too big */
+    s32_t tmp;
 
     /* if, for any object named in the variable-bindings field,
        an error occurs, then the receiving entity sends to the originator
        of the received message the message of identical form, 
        except that the value of the error-status field is set */
     if (response->error_status != ERROR_STATUS_NO_ERROR) {
-        int i;
+        u8_t i;
         response->var_bind_list_len = request->var_bind_list_len;
         for (i = 0; i < response->var_bind_list_len; i++) {
             memcpy(&response->var_bind_list[i].oid, &request->var_bind_list[i], sizeof (oid_t));
@@ -666,8 +675,8 @@ int snmp_write_response(request_t* request, response_t* response, u8_t* output, 
             memcpy(&response->var_bind_list[i].value.buffer, &varbind_t_null.buffer, response->var_bind_list[i].value.len);            
         }
     }
-    int pos = max_output_len;
-    int i;
+    s16_t pos = max_output_len;
+    s8_t i;
 
     /* write in the reverse order */
 
@@ -675,13 +684,15 @@ int snmp_write_response(request_t* request, response_t* response, u8_t* output, 
     for (i = response->var_bind_list_len - 1; i >= 0; i--) {
         TRY(write_var_bind(output, &pos, &response->var_bind_list[i]));
     }
-    int len = max_output_len - pos;
+    u16_t len = max_output_len - pos;
     TRY(write_type_length(output, &pos, BER_TYPE_SEQUENCE, &len));
 
     /* error index */
-    TRY(write_integer(output, &pos, &response->error_index));
+    tmp = response->error_index;
+    TRY(write_integer(output, &pos, &tmp));
     /* error status */
-    TRY(write_integer(output, &pos, &response->error_status));
+    tmp = response->error_status;
+    TRY(write_integer(output, &pos, &tmp));
     /* request id */
     TRY(write_integer(output, &pos, &request->request_id));
 
@@ -692,7 +703,8 @@ int snmp_write_response(request_t* request, response_t* response, u8_t* output, 
     /* community string */
     TRY(write_string(output, &pos, request->community));
     /* version */
-    TRY(write_integer(output, &pos, &request->version));
+    tmp = request->version;
+    TRY(write_integer(output, &pos, &tmp));
 
     /* sequence header*/
     len = max_output_len - pos;
@@ -710,7 +722,7 @@ int snmp_write_response(request_t* request, response_t* response, u8_t* output, 
 /*
  * Handle an SNMP request
  */
-int snmp_handler(const u8_t* const input,  const u16_t* const input_len, u8_t* output, u16_t* output_len, const u16_t max_output_len)
+s8_t snmp_handler(const u8_t* const input,  const u16_t* const input_len, u8_t* output, u16_t* output_len, const u16_t max_output_len)
 {
     static request_t request;
     static response_t response;
