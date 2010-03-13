@@ -32,7 +32,7 @@
 /** community string */
 #define COMMUNITY_STRING        "public"
 
-/** maximum length of the community string */
+/** maximum length of the community string in octets */
 #define COMMUNITY_STRING_LEN    32
 
 /** maximum number of variable bindings in a request */
@@ -41,7 +41,7 @@
 /** maximum number of elements in an OID */
 #define OID_LEN                 20
 
-/** maximum length of the value of a variable bindings in a response */
+/** maximum length of the value of a variable bindings in a response (in octets)*/
 #define VAR_BIND_VALUE_LEN      128
 
 
