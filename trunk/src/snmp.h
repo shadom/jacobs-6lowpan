@@ -1,7 +1,7 @@
 /* -----------------------------------------------------------------------------
  * SNMP implementation for Contiki
  *
- * Copyright (C) 2010 Siarhei Kuryla
+ * Copyright (C) 2010 Siarhei Kuryla <kurilo@gmail.com>
  *
  * This program is part of free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,18 +21,58 @@
 
 /**
  * \file
- *         Implementation of the SNMP protocol
+ *         Data structures for the SNMPv1 protocol
  * \author
  *         Siarhei Kuryla <kurilo@gmail.com>
  */
 
-#ifndef __SNMP_PROTOCOL_H__
-#define	__SNMP_PROTOCOL_H__
 
-#include "contiki.h"
+#ifndef __SNMP_H__
+#define __SNMP_H__
+
 #include "snmpd-types.h"
+#include "snmpd-conf.h"
 
-s8_t snmp_handler(const u8_t* const input,  const u16_t* const input_len, u8_t* output, u16_t* output_len, const u16_t max_output_len);
+/** \brief OID. */
+typedef struct {
+    u16_t values[OID_LEN];
+    u16_t len;
+} oid_t;
 
-#endif	/* __SNMP_PROTOCOL_H__ */
+/** \brief Value of the variable binding. */
+typedef struct {
+    u8_t buffer[VAR_BIND_VALUE_LEN];
+    u8_t len;
+} varbind_value_t;
 
+/** \brief Variable binding. */
+typedef struct {
+    oid_t oid;
+    varbind_value_t value;
+} varbind_t;
+
+/** \brief NULL value of the variable binding. */
+static const varbind_value_t varbind_t_null = {"\x05\x00", 2};
+
+/** \brief Request data structure. */
+typedef struct {
+    u8_t version;
+    u8_t community[COMMUNITY_STRING_LEN];
+    u8_t request_type;
+    s32_t request_id;
+    u8_t error_status;
+    u8_t error_index;
+    u8_t var_bind_list_len;
+    oid_t var_bind_list[VAR_BIND_LEN];
+} request_t;
+
+/** \brief Response data structure. */
+typedef struct {
+    u8_t error_status;
+    u8_t error_index;
+    u8_t var_bind_list_len;
+    varbind_t var_bind_list[VAR_BIND_LEN];
+} response_t;
+
+
+#endif /* __SNMP__ */
