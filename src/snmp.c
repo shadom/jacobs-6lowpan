@@ -22,7 +22,7 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "snmp-protocol.h"
+#include "snmp.h"
 #include "snmpd-conf.h"
 #include "logging.h"
 
