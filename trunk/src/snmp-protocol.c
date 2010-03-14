@@ -24,7 +24,7 @@
 
 #include "snmp-protocol.h"
 #include "snmpd-conf.h"
-#include "snmpd-logging.h"
+#include "logging.h"
 
 /*
  * BER identifiers for ASN.1 implementation of SNMP.
