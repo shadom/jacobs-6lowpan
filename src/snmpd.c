@@ -29,7 +29,7 @@
 #include "snmpd.h"
 #include "snmpd-conf.h"
 #include "snmp-protocol.h"
-#include "snmpd-logging.h"
+#include "logging.h"
 
 #define UDP_IP_BUF   ((struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN])
 

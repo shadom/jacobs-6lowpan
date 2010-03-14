@@ -25,7 +25,7 @@
  * \author
  *         Siarhei Kuryla <kurilo@gmail.com>
  */
-#include "snmpd-logging.h"
+#include "logging.h"
 
 #if DEBUG
 #include <stdio.h>
