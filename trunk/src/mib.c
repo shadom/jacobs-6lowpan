@@ -1,7 +1,7 @@
 /* -----------------------------------------------------------------------------
  * SNMP implementation for Contiki
  *
- * Copyright (C) 2010 Siarhei Kuryla
+ * Copyright (C) 2010 Siarhei Kuryla <kurilo@gmail.com>
  *
  * This program is part of free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -19,4 +19,3 @@
  *
  */
 
-#include "snmpd-utils.h"

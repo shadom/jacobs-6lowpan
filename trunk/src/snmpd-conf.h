@@ -29,6 +29,11 @@
 #ifndef __SNMP_CONF_H__
 #define	__SNMP_CONF_H__
 
+#include "contiki-net.h"
+
+/* maximum length of the payload of incoming and outgoing UDP datagrams */
+#define MAX_BUF_SIZE 800//UIP_APPDATA_SIZE
+
 /** community string */
 #define COMMUNITY_STRING        "public"
 
@@ -43,7 +48,6 @@
 
 /** maximum length of the value of a variable bindings in a response (in octets)*/
 #define VAR_BIND_VALUE_LEN      128
-
 
 #endif	/* __SNMP_CONF_H__ */
 

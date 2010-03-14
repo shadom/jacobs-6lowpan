@@ -19,20 +19,4 @@
  *
  */
 
-/**
- * \file
- *         Implementation of the SNMP protocol
- * \author
- *         Siarhei Kuryla <kurilo@gmail.com>
- */
-
-#ifndef __SNMP_PROTOCOL_H__
-#define	__SNMP_PROTOCOL_H__
-
-#include "contiki.h"
-#include "snmpd-types.h"
-
-s8_t snmp_handler(const u8_t* const input,  const u16_t* const input_len, u8_t* output, u16_t* output_len, const u16_t max_output_len);
-
-#endif	/* __SNMP_PROTOCOL_H__ */
-
+#include "utils.h"
