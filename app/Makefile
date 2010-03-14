@@ -1,7 +1,7 @@
 PROJECT=snmp-server
 
 UIP_CONF_IPV6=1
-APPS=raven-webserver raven-lcd-interface snmpd
+APPS=snmpd raven-webserver raven-lcd-interface
 
 CONTIKI=/data/masters/dev/contiki-2.x
 

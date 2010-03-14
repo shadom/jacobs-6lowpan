@@ -27,17 +27,14 @@
 #include "contiki-net.h"
 
 #include "snmpd.h"
+#include "snmpd-conf.h"
 #include "snmp-protocol.h"
-#include "snmpd-utils.h"
 #include "snmpd-logging.h"
 
 #define UDP_IP_BUF   ((struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
 /* UDP connection*/
 static struct uip_udp_conn *udpconn;
-
-/* maximum length of the payload of incoming and outgoing UDP datagrams */
-#define MAX_BUF_SIZE 200//UIP_APPDATA_SIZE
 
 PROCESS(snmpd_process, "SNMP daemon process");
 
