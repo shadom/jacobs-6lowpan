@@ -30,12 +30,12 @@
 #define __SNMPD_TYPES_H__
 
 /** \brief indicates whether debug is enabled */
-#define u8_t unsigned char
-#define s8_t signed char
-#define u16_t unsigned short
-#define s16_t signed short
-#define u32_t unsigned long
-#define s32_t signed long
+#define u8t unsigned char
+#define s8t signed char
+#define u16t unsigned short
+#define s16t signed short
+#define u32t unsigned long
+#define s32t signed long
 
 
 #endif /* __SNMPD_TYPES_H__ */
