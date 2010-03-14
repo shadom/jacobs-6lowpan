@@ -44,12 +44,12 @@ PROCESS(snmpd_process, "SNMP daemon process");
  */
 static void udp_handler(process_event_t ev, process_data_t data)
 {
-    static u8_t respond[MAX_BUF_SIZE];
-    static u16_t resp_len;
+    static u8t respond[MAX_BUF_SIZE];
+    static u16t resp_len;
     
     #if DEBUG && CONTIKI_TARGET_AVR_RAVEN
-    static u8_t request[MAX_BUF_SIZE];
-    static u16_t req_len;
+    static u8t request[MAX_BUF_SIZE];
+    static u16t req_len;
     #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
     if (ev == tcpip_event && uip_newdata()) {
         uip_ipaddr_copy(&udpconn->ripaddr, &UDP_IP_BUF->srcipaddr);
@@ -65,7 +65,7 @@ static void udp_handler(process_event_t ev, process_data_t data)
 
 /*
         resp_len = MAX_BUF_SIZE - 1;
-        int i;
+        s16t i;
         for (i = 0; i < resp_len; i++) {
             respond[i] = 64 + i / 100;
         }

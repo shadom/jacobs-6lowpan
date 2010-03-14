@@ -29,7 +29,7 @@
 #ifndef __SNMP_CONF_H__
 #define	__SNMP_CONF_H__
 
-#include "contiki-net.h"
+//#include "contiki-net.h"
 
 /* maximum length of the payload of incoming and outgoing UDP datagrams */
 #define MAX_BUF_SIZE 800//UIP_APPDATA_SIZE

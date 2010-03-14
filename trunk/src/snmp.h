@@ -21,7 +21,7 @@
 
 /**
  * \file
- *         Data structures for the SNMPv1 protocol
+ *         SNMPv1 protocol definitions
  * \author
  *         Siarhei Kuryla <kurilo@gmail.com>
  */
@@ -33,16 +33,19 @@
 #include "snmpd-types.h"
 #include "snmpd-conf.h"
 
+#define SNMP_VERSION_1					0
+#define SNMP_VERSION_2C					1
+
 /** \brief OID. */
 typedef struct {
-    u16_t values[OID_LEN];
-    u16_t len;
+    u16t values[OID_LEN];
+    u16t len;
 } oid_t;
 
 /** \brief Value of the variable binding. */
 typedef struct {
-    u8_t buffer[VAR_BIND_VALUE_LEN];
-    u8_t len;
+    u8t buffer[VAR_BIND_VALUE_LEN];
+    u8t len;
 } varbind_value_t;
 
 /** \brief Variable binding. */
@@ -56,23 +59,42 @@ static const varbind_value_t varbind_t_null = {"\x05\x00", 2};
 
 /** \brief Request data structure. */
 typedef struct {
-    u8_t version;
-    u8_t community[COMMUNITY_STRING_LEN];
-    u8_t request_type;
-    s32_t request_id;
-    u8_t error_status;
-    u8_t error_index;
-    u8_t var_bind_list_len;
+    u8t version;
+    u8t community[COMMUNITY_STRING_LEN];
+    u8t request_type;
+    s32t request_id;
+    u8t error_status;
+    u8t error_index;
+    u8t var_bind_list_len;
     oid_t var_bind_list[VAR_BIND_LEN];
 } request_t;
 
 /** \brief Response data structure. */
 typedef struct {
-    u8_t error_status;
-    u8_t error_index;
-    u8_t var_bind_list_len;
+    u8t error_status;
+    u8t error_index;
+    u8t var_bind_list_len;
     varbind_t var_bind_list[VAR_BIND_LEN];
 } response_t;
 
+#define ERROR_STATUS_NO_ERROR					0
+#define ERROR_STATUS_TOO_BIG				1
+#define ERROR_STATUS_NO_SUCH_NAME			2
+#define ERROR_STATUS_BAD_VALUE				3
+#define ERROR_STATUS_READ_ONLY				4
+#define ERROR_STATUS_GEN_ERR				5
+#define ERROR_STATUS_NO_ACCESS				6
+#define ERROR_STATUS_WRONG_TYPE				7
+#define ERROR_STATUS_WRONG_LENGTH			8
+#define ERROR_STATUS_WRONG_ENCODING			9
+#define ERROR_STATUS_WRONG_VALUE			10
+#define ERROR_STATUS_NO_CREATION			11
+#define ERROR_STATUS_INCONSISTENT_VALUE                 12
+#define ERROR_STATUS_RESOURCE_UNAVAILABLE               13
+#define ERROR_STATUS_COMMIT_FAILED			14
+#define ERROR_STATUS_UNDO_FAILED			15
+#define ERROR_STATUS_AUTHORIZATION_ERROR                16
+#define ERROR_STATUS_NOT_WRITABLE			17
+#define ERROR_STATUS_INCONSISTENT_NAME                  18
 
 #endif /* __SNMP__ */
