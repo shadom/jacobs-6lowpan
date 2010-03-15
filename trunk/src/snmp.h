@@ -59,14 +59,20 @@ static const varbind_value_t varbind_t_null = {"\x05\x00", 2};
 
 /** \brief Request data structure. */
 typedef struct {
-    u8t version;
-    u8t community[COMMUNITY_STRING_LEN];
     u8t request_type;
     s32t request_id;
     u8t error_status;
     u8t error_index;
     u8t var_bind_list_len;
     varbind_t var_bind_list[VAR_BIND_LEN];
+} pdu_t;
+
+
+/** \brief Request data structure. */
+typedef struct {
+    u8t version;
+    u8t community[COMMUNITY_STRING_LEN];
+    pdu_t pdu;
 } message_t;
 
 #define ERROR_STATUS_NO_ERROR					0

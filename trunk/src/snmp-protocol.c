@@ -86,7 +86,7 @@ static s8t decode_request(const u8t* const input, const u16t* const len, message
     snmp_log("community string: %s\n", request->community);
 
     /* request PDU */
-    if (ber_decode_type(input, len, &pos, &request->request_type) == -1 || !ber_decode_length(input, len, &pos, &length) == -1) {
+    if (ber_decode_type(input, len, &pos, &request->pdu.request_type) == -1 || !ber_decode_length(input, len, &pos, &length) == -1) {
         return -1;
     }
 
@@ -103,7 +103,7 @@ static s8t decode_request(const u8t* const input, const u16t* const len, message
     if (type != BER_TYPE_INTEGER || length < 1) {
         snmp_log("bad SNMP request-id: type %02X length %d\n", type, length);
         return -1;
-    } else if (ber_decode_integer_value(input, len, &pos, &length, &request->request_id) == -1) {
+    } else if (ber_decode_integer_value(input, len, &pos, &length, &request->pdu.request_id) == -1) {
         return -1;
     }
     snmp_log("request id: %d\n", request->request_id);
@@ -118,7 +118,7 @@ static s8t decode_request(const u8t* const input, const u16t* const len, message
     } else if (ber_decode_integer_value(input, len, &pos, &length, &tmp) == -1) {
         return -1;
     }
-    request->error_status = (u8t)tmp;
+    request->pdu.error_status = (u8t)tmp;
     snmp_log("error-status: %d\n", request->error_status);
 
     /* error-index */
@@ -131,7 +131,7 @@ static s8t decode_request(const u8t* const input, const u16t* const len, message
     } else if (ber_decode_integer_value(input, len, &pos, &length, &tmp) == -1) {
         return -1;
     }
-    request->error_index = (u8t)tmp;
+    request->pdu.error_index = (u8t)tmp;
     snmp_log("error-index: %d\n", request->error_index);
 
     /* variable-bindings */
@@ -143,9 +143,9 @@ static s8t decode_request(const u8t* const input, const u16t* const len, message
         return -1;
     }
     /* variable binding list */
-    request->var_bind_list_len = 0;
+    request->pdu.var_bind_list_len = 0;
     while (pos < *len) {
-        if (request->var_bind_list_len >= VAR_BIND_LEN) {
+        if (request->pdu.var_bind_list_len >= VAR_BIND_LEN) {
             snmp_log("maximum number of var bindings in the list is exceeded: max=%d\n", VAR_BIND_LEN);
             return -1;
         }
@@ -167,7 +167,7 @@ static s8t decode_request(const u8t* const input, const u16t* const len, message
             snmp_log("bad SNMP varbinding OID: type %02X length %d\n", type, length);
             return -1;
         }
-        if (ber_decode_oid(input, len, &pos, &length, &request->var_bind_list[request->var_bind_list_len].oid) == -1) {
+        if (ber_decode_oid(input, len, &pos, &length, &request->pdu.var_bind_list[request->pdu.var_bind_list_len].oid) == -1) {
             return -1;
         }
         /* value */
@@ -180,7 +180,7 @@ static s8t decode_request(const u8t* const input, const u16t* const len, message
         } else if (ber_decode_void(input, len, &pos, &length) == -1) {
             return -1;
         }
-        request->var_bind_list_len++;
+        request->pdu.var_bind_list_len++;
     }
 
     snmp_log("parsing finished: OK\n");
@@ -194,8 +194,8 @@ static s8t decode_request(const u8t* const input, const u16t* const len, message
  */
 static s8t snmp_get(message_t* message)
 {
-    message->error_status = ERROR_STATUS_GEN_ERR;
-    message->error_index = 1;
+    message->pdu.error_status = ERROR_STATUS_GEN_ERR;
+    message->pdu.error_index = 1;
     return 0;
 }
 
@@ -213,16 +213,16 @@ static s8t encode_response(message_t* message, u8t* output, u16t* output_len, co
        an error occurs, then the receiving entity sends to the originator
        of the received message the message of identical form, 
        except that the value of the error-status field is set */
-    if (message->error_status != ERROR_STATUS_NO_ERROR) {
+    if (message->pdu.error_status != ERROR_STATUS_NO_ERROR) {
         u8t i;
-        message->var_bind_list_len = message->var_bind_list_len;
-        for (i = 0; i < message->var_bind_list_len; i++) {
-            memcpy(&message->var_bind_list[i].oid, &message->var_bind_list[i], sizeof (oid_t));
-            message->var_bind_list[i].value.len = varbind_t_null.len;
-            memcpy(&message->var_bind_list[i].value.buffer, &varbind_t_null.buffer, message->var_bind_list[i].value.len);
+        message->pdu.var_bind_list_len = message->pdu.var_bind_list_len;
+        for (i = 0; i < message->pdu.var_bind_list_len; i++) {
+            memcpy(&message->pdu.var_bind_list[i].oid, &message->pdu.var_bind_list[i], sizeof (oid_t));
+            message->pdu.var_bind_list[i].value.len = varbind_t_null.len;
+            memcpy(&message->pdu.var_bind_list[i].value.buffer, &varbind_t_null.buffer, message->pdu.var_bind_list[i].value.len);
         }
     }
-    ber_encode_pdu(output, &pos, message, &max_output_len);
+    ber_encode_pdu(output, &pos, &message->pdu, &max_output_len);
 
     /* community string */
     TRY(ber_encode_string(output, &pos, message->community));
@@ -261,16 +261,16 @@ s8t snmp_handler(const u8t* const input,  const u16t* const input_len, u8t* outp
     if (strcmp(COMMUNITY_STRING, (char*)message.community)) {
         /* the protocol entity notes this failure, (possibly) generates a trap, and discards the datagram
          and performs no further actions. */
-        message.error_status = (message.version == SNMP_VERSION_2C) ? ERROR_STATUS_NO_ACCESS : ERROR_STATUS_GEN_ERR;
-        message.error_index = 0;
+        message.pdu.error_status = (message.version == SNMP_VERSION_2C) ? ERROR_STATUS_NO_ACCESS : ERROR_STATUS_GEN_ERR;
+        message.pdu.error_index = 0;
         snmp_log("wrong community string \"%s\"\n", message.community);
     } else {
         snmp_log("authentication passed\n");
     }
 
     /* request processing */
-    if (message.error_status == ERROR_STATUS_NO_ERROR) {
-        if (message.request_type == BER_TYPE_SNMP_GET) {
+    if (message.pdu.error_status == ERROR_STATUS_NO_ERROR) {
+        if (message.pdu.request_type == BER_TYPE_SNMP_GET) {
             snmp_get(&message);
         }
     }

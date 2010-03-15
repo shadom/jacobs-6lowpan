@@ -371,27 +371,27 @@ s8t ber_encode_string(u8t* output, s16t* pos, u8t* str_value)
 /*
  * Encode SNMP PDU
  */
-s8t ber_encode_pdu(u8t* output, s16t* pos, message_t* message, const u16t* max_output_len) {
+s8t ber_encode_pdu(u8t* output, s16t* pos, pdu_t* pdu, const u16t* max_output_len) {
     s8t i;
     s32t tmp;
 
     /* write in the reverse order */
 
     /* variable binding list */
-    for (i = message->var_bind_list_len - 1; i >= 0; i--) {
-        TRY(ber_encode_var_bind(output, pos, &message->var_bind_list[i]));
+    for (i = pdu->var_bind_list_len - 1; i >= 0; i--) {
+        TRY(ber_encode_var_bind(output, pos, &pdu->var_bind_list[i]));
     }
     u16t len = *max_output_len - *pos;
     TRY(ber_encode_type_length(output, pos, BER_TYPE_SEQUENCE, &len));
 
     /* error index */
-    tmp = message->error_index;
+    tmp = pdu->error_index;
     TRY(ber_encode_integer(output, pos, &tmp));
     /* error status */
-    tmp = message->error_status;
+    tmp = pdu->error_status;
     TRY(ber_encode_integer(output, pos, &tmp));
     /* request id */
-    TRY(ber_encode_integer(output, pos, &message->request_id));
+    TRY(ber_encode_integer(output, pos, &pdu->request_id));
 
     /* sequence header*/
     len = (*max_output_len) - *pos;
