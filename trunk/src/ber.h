@@ -88,7 +88,7 @@ s8t ber_encode_oid(u8t* output, s16t* pos, oid_t* oid);
 
 s8t ber_encode_var_bind(u8t* output, s16t* pos, varbind_t* varbind);
 
-s8t ber_encode_pdu(u8t* output, s16t* pos, request_t* request, response_t* response, const u16t* max_output_len);
+s8t ber_encode_pdu(u8t* output, s16t* pos, message_t* message, const u16t* max_output_len);
 
 #define DECN(pos, value) (*pos) -= value; if (*pos < 0) { snmp_log("too big message: %d", __LINE__); return -1;}
 

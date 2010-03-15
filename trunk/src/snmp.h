@@ -66,16 +66,8 @@ typedef struct {
     u8t error_status;
     u8t error_index;
     u8t var_bind_list_len;
-    oid_t var_bind_list[VAR_BIND_LEN];
-} request_t;
-
-/** \brief Response data structure. */
-typedef struct {
-    u8t error_status;
-    u8t error_index;
-    u8t var_bind_list_len;
     varbind_t var_bind_list[VAR_BIND_LEN];
-} response_t;
+} message_t;
 
 #define ERROR_STATUS_NO_ERROR					0
 #define ERROR_STATUS_TOO_BIG				1

@@ -29,7 +29,7 @@
 /*
  * Parse a BER encoded SNMP request.
  */
-s8t  snmp_parse_request(const u8t* const input, const u16t* const len, request_t* request)
+static s8t decode_request(const u8t* const input, const u16t* const len, message_t* request)
 {
     static u16t pos, length;
     static u8t type;
@@ -167,7 +167,7 @@ s8t  snmp_parse_request(const u8t* const input, const u16t* const len, request_t
             snmp_log("bad SNMP varbinding OID: type %02X length %d\n", type, length);
             return -1;
         }
-        if (ber_decode_oid(input, len, &pos, &length, &request->var_bind_list[request->var_bind_list_len]) == -1) {
+        if (ber_decode_oid(input, len, &pos, &length, &request->var_bind_list[request->var_bind_list_len].oid) == -1) {
             return -1;
         }
         /* value */
@@ -192,10 +192,10 @@ s8t  snmp_parse_request(const u8t* const input, const u16t* const len, request_t
 /*
  * Handle an SNMP GET request
  */
-s8t snmp_handle_get(request_t* request, response_t* response)
+static s8t snmp_get(message_t* message)
 {
-    response->error_status = ERROR_STATUS_GEN_ERR;
-    response->error_index = 1;
+    message->error_status = ERROR_STATUS_GEN_ERR;
+    message->error_index = 1;
     return 0;
 }
 
@@ -203,32 +203,31 @@ s8t snmp_handle_get(request_t* request, response_t* response)
 /*
  * Encode an SNMP response
  */
-s8t ber_encode_response(request_t* request, response_t* response, u8t* output, u16t* output_len, const u16t max_output_len)
+static s8t encode_response(message_t* message, u8t* output, u16t* output_len, const u16t max_output_len)
 {
     /* TODO: don't forget about too big */
     s32t tmp;
+    s16t pos = max_output_len;
 
     /* if, for any object named in the variable-bindings field,
        an error occurs, then the receiving entity sends to the originator
        of the received message the message of identical form, 
        except that the value of the error-status field is set */
-    if (response->error_status != ERROR_STATUS_NO_ERROR) {
+    if (message->error_status != ERROR_STATUS_NO_ERROR) {
         u8t i;
-        response->var_bind_list_len = request->var_bind_list_len;
-        for (i = 0; i < response->var_bind_list_len; i++) {
-            memcpy(&response->var_bind_list[i].oid, &request->var_bind_list[i], sizeof (oid_t));
-            response->var_bind_list[i].value.len = varbind_t_null.len;
-            memcpy(&response->var_bind_list[i].value.buffer, &varbind_t_null.buffer, response->var_bind_list[i].value.len);
+        message->var_bind_list_len = message->var_bind_list_len;
+        for (i = 0; i < message->var_bind_list_len; i++) {
+            memcpy(&message->var_bind_list[i].oid, &message->var_bind_list[i], sizeof (oid_t));
+            message->var_bind_list[i].value.len = varbind_t_null.len;
+            memcpy(&message->var_bind_list[i].value.buffer, &varbind_t_null.buffer, message->var_bind_list[i].value.len);
         }
     }
-    s16t pos = max_output_len;
-
-    ber_encode_pdu(output, &pos, request, response, &max_output_len);
+    ber_encode_pdu(output, &pos, message, &max_output_len);
 
     /* community string */
-    TRY(ber_encode_string(output, &pos, request->community));
+    TRY(ber_encode_string(output, &pos, message->community));
     /* version */
-    tmp = request->version;
+    tmp = message->version;
     TRY(ber_encode_integer(output, &pos, &tmp));
 
     /* sequence header*/
@@ -249,37 +248,35 @@ s8t ber_encode_response(request_t* request, response_t* response, u8t* output, u
  */
 s8t snmp_handler(const u8t* const input,  const u16t* const input_len, u8t* output, u16t* output_len, const u16t max_output_len)
 {
-    static request_t request;
-    static response_t response;
+    static message_t message;
+    memset(&message, 0, sizeof(message_t));
 
     /* parse the incoming datagram and build an ASN.1 object */
-    if (snmp_parse_request(input, input_len, &request) == -1) {
+    if (decode_request(input, input_len, &message) == -1) {
         /* if the parse fails, it discards the datagram and performs no further actions. */
         return -1;
     }
 
-    memset(&response, 0, sizeof(response_t));
-
     /* authentication scheme */
-    if (strcmp(COMMUNITY_STRING, (char*)request.community)) {
+    if (strcmp(COMMUNITY_STRING, (char*)message.community)) {
         /* the protocol entity notes this failure, (possibly) generates a trap, and discards the datagram
          and performs no further actions. */
-        response.error_status = (request.version == SNMP_VERSION_2C) ? ERROR_STATUS_NO_ACCESS : ERROR_STATUS_GEN_ERR;
-        response.error_index = 0;
-        snmp_log("wrong community string \"%s\"\n", request.community);
+        message.error_status = (message.version == SNMP_VERSION_2C) ? ERROR_STATUS_NO_ACCESS : ERROR_STATUS_GEN_ERR;
+        message.error_index = 0;
+        snmp_log("wrong community string \"%s\"\n", message.community);
     } else {
         snmp_log("authentication passed\n");
     }
 
     /* request processing */
-    if (request.error_status == ERROR_STATUS_NO_ERROR) {
-        if (request.request_type == BER_TYPE_SNMP_GET) {
-            snmp_handle_get(&request, &response);
+    if (message.error_status == ERROR_STATUS_NO_ERROR) {
+        if (message.request_type == BER_TYPE_SNMP_GET) {
+            snmp_get(&message);
         }
     }
 
     /* encode the response */
-    if (ber_encode_response(&request, &response, output, output_len, max_output_len) == -1) {
+    if (encode_response(&message, output, output_len, max_output_len) == -1) {
             return -1;
     }
 
