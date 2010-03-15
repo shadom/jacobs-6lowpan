@@ -30,7 +30,7 @@
 #define __SNMPD_LOGGING_H__
 
 /** \brief indicates whether debug is enabled */
-#define DEBUG 0
+#define DEBUG 1
 
 /** \brief indicates whether info messages are enabled */
 #define INFO 0

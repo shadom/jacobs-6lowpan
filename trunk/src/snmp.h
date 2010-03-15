@@ -67,7 +67,6 @@ typedef struct {
     varbind_t var_bind_list[VAR_BIND_LEN];
 } pdu_t;
 
-
 /** \brief Request data structure. */
 typedef struct {
     u8t version;
