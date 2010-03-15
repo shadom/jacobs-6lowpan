@@ -203,7 +203,7 @@ s8t snmp_handle_get(request_t* request, response_t* response)
 /*
  * Encode an SNMP response
  */
-s8t snmp_write_response(request_t* request, response_t* response, u8t* output, u16t* output_len, const u16t max_output_len)
+s8t ber_encode_response(request_t* request, response_t* response, u8t* output, u16t* output_len, const u16t max_output_len)
 {
     /* TODO: don't forget about too big */
     s32t tmp;
@@ -218,33 +218,12 @@ s8t snmp_write_response(request_t* request, response_t* response, u8t* output, u
         for (i = 0; i < response->var_bind_list_len; i++) {
             memcpy(&response->var_bind_list[i].oid, &request->var_bind_list[i], sizeof (oid_t));
             response->var_bind_list[i].value.len = varbind_t_null.len;
-            memcpy(&response->var_bind_list[i].value.buffer, &varbind_t_null.buffer, response->var_bind_list[i].value.len);            
+            memcpy(&response->var_bind_list[i].value.buffer, &varbind_t_null.buffer, response->var_bind_list[i].value.len);
         }
     }
     s16t pos = max_output_len;
-    s8t i;
 
-    /* write in the reverse order */
-
-    /* variable binding list */
-    for (i = response->var_bind_list_len - 1; i >= 0; i--) {
-        TRY(ber_encode_var_bind(output, &pos, &response->var_bind_list[i]));
-    }
-    u16t len = max_output_len - pos;
-    TRY(ber_encode_type_length(output, &pos, BER_TYPE_SEQUENCE, &len));
-
-    /* error index */
-    tmp = response->error_index;
-    TRY(ber_encode_integer(output, &pos, &tmp));
-    /* error status */
-    tmp = response->error_status;
-    TRY(ber_encode_integer(output, &pos, &tmp));
-    /* request id */
-    TRY(ber_encode_integer(output, &pos, &request->request_id));
-
-    /* sequence header*/
-    len = max_output_len - pos;
-    TRY(ber_encode_type_length(output, &pos, BER_TYPE_SNMP_RESPONSE, &len));
+    ber_encode_pdu(output, &pos, request, response, &max_output_len);
 
     /* community string */
     TRY(ber_encode_string(output, &pos, request->community));
@@ -253,7 +232,7 @@ s8t snmp_write_response(request_t* request, response_t* response, u8t* output, u
     TRY(ber_encode_integer(output, &pos, &tmp));
 
     /* sequence header*/
-    len = max_output_len - pos;
+    u16t len = max_output_len - pos;
     TRY(ber_encode_type_length(output, &pos, BER_TYPE_SEQUENCE, &len));
 
     *output_len = max_output_len - pos;
@@ -300,7 +279,7 @@ s8t snmp_handler(const u8t* const input,  const u16t* const input_len, u8t* outp
     }
 
     /* encode the response */
-    if (snmp_write_response(&request, &response, output, output_len, max_output_len) == -1) {
+    if (ber_encode_response(&request, &response, output, output_len, max_output_len) == -1) {
             return -1;
     }
 

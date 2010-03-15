@@ -97,4 +97,4 @@ typedef struct {
 #define ERROR_STATUS_NOT_WRITABLE			17
 #define ERROR_STATUS_INCONSISTENT_NAME                  18
 
-#endif /* __SNMP__ */
+#endif /* __SNMP_H__ */
