@@ -1,7 +1,7 @@
 PROJECT=snmp-server
 
 UIP_CONF_IPV6=1
-APPS=snmpd raven-webserver raven-lcd-interface
+APPS=snmpd raven-lcd-interface raven-webserver # webserver
 
 CONTIKI=/data/masters/dev/contiki-2.x
 
@@ -15,6 +15,9 @@ raven:
 	avr-objcopy -O ihex -R .eeprom -R .fuse -R .signature $(PROJECT).elf $(PROJECT).hex
 	avr-size -C --mcu=atmega1284p $(PROJECT).elf
 	rm -rf obj_native
+
+sky:
+	make TARGET=sky $(PROJECT)
 
 cl:
 	make TARGET=avr-raven clean
