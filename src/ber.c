@@ -24,6 +24,20 @@
 #include "logging.h"
 
 
+#define DECN(pos, value) (*pos) -= value; if (*pos < 0) { snmp_log("too big message: %d", __LINE__); return -1;}
+
+#define DEC(pos) DECN(pos, 1)
+
+#define TRY(c) if (c == -1) { snmp_log("exception line: %d", __LINE__); return -1; }
+
+typedef struct {
+    u8t* buffer;
+    u8t len;
+} ber_value;
+
+/** \brief NULL value of the variable binding. */
+static const ber_value ber_void_null = {(u8t*)"\x05\x00", 2};
+
 /* static variable shared between functions to save memory */
 static u16t s_length;
 
@@ -461,8 +475,12 @@ s8t ber_encode_var_bind(u8t* output, s16t* pos, varbind_t* varbind)
     /* write the variable binding in the reverse order */
     u16t len_pos = *pos;
     /* value */
-    DECN(pos, varbind->value.len);
-    memcpy(output + (*pos), varbind->value.buffer, varbind->value.len);
+    if (varbind->value == NULL) {
+        DECN(pos, ber_void_null.len);
+        memcpy(output + (*pos), ber_void_null.buffer, ber_void_null.len);
+    } else {
+        // TODO: implement all other type support
+    }
 
     /* oid */
     TRY(ber_encode_oid(output, pos, &varbind->oid));
