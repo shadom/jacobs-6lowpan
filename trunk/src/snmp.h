@@ -44,7 +44,7 @@ typedef struct {
 
 /** \brief Value of the variable binding. */
 typedef struct {
-    u8t buffer[VAR_BIND_VALUE_LEN];
+    u8t buffer[VALUE_LEN];
     u8t len;
 } varbind_value_t;
 
@@ -70,7 +70,7 @@ typedef struct {
 /** \brief Request data structure. */
 typedef struct {
     u8t version;
-    u8t community[COMMUNITY_STRING_LEN];
+    u8t community[VALUE_LEN];
     pdu_t pdu;
 } message_t;
 

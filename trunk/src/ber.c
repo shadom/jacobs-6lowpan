@@ -349,11 +349,11 @@ s8t ber_decode_request(const u8t* const input, const u16t* const len, message_t*
         snmp_log("SNMP community string must be of type %02X, byt not %02X\n", BER_TYPE_OCTET_STRING, type);
         return -1;
     }
-    if (length >= COMMUNITY_STRING_LEN) {
+    if (length >= VALUE_LEN) {
         snmp_log("community string is too long (must be up to 31 character)\n");
         return -1;
     }
-    if (ber_decode_string((u8t*)input, len, &pos, &length, request->community, COMMUNITY_STRING_LEN) == -1) {
+    if (ber_decode_string((u8t*)input, len, &pos, &length, request->community, VALUE_LEN) == -1) {
         return -1;
     } else if (strlen((char*)request->community) < 1) {
         snmp_log("unsupported SNMP community '%s'\n", request->community);

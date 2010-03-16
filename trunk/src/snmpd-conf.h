@@ -37,9 +37,6 @@
 /** community string */
 #define COMMUNITY_STRING        "public"
 
-/** maximum length of the community string in octets */
-#define COMMUNITY_STRING_LEN    32
-
 /** maximum number of variable bindings in a request */
 #define VAR_BIND_LEN            16
 
@@ -47,7 +44,7 @@
 #define OID_LEN                 20
 
 /** maximum length of the value of a variable bindings in a response (in octets)*/
-#define VAR_BIND_VALUE_LEN      128
+#define VALUE_LEN      255
 
 #endif	/* __SNMP_CONF_H__ */
 
