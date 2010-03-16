@@ -43,19 +43,20 @@ typedef struct {
 } oid_t;
 
 /** \brief Value of the variable binding. */
-typedef struct {
-    u8t buffer[VALUE_LEN];
-    u8t len;
+typedef union {
+    s32t i_value;
+    u32t u_value;
+    struct {
+        char*   ptr;
+        u16t    len;
+    } s_value;
 } varbind_value_t;
 
 /** \brief Variable binding. */
 typedef struct {
     oid_t oid;
-    varbind_value_t value;
+    varbind_value_t* value;
 } varbind_t;
-
-/** \brief NULL value of the variable binding. */
-static const varbind_value_t varbind_t_null = {"\x05\x00", 2};
 
 /** \brief Request data structure. */
 typedef struct {

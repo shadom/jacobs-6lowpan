@@ -100,11 +100,5 @@ s8t ber_encode_pdu(u8t* output, s16t* pos, pdu_t* pdu, const u16t* max_output_le
 
 s8t ber_encode_response(message_t* message, u8t* output, u16t* output_len, const u16t max_output_len);
 
-#define DECN(pos, value) (*pos) -= value; if (*pos < 0) { snmp_log("too big message: %d", __LINE__); return -1;}
-
-#define DEC(pos) DECN(pos, 1)
-
-#define TRY(c) if (c == -1) { snmp_log("exception line: %d", __LINE__); return -1; }
-
 #endif	/* __BER_H__ */
 

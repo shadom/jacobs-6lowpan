@@ -80,8 +80,7 @@ s8t snmp_handler(const u8t* const input,  const u16t* const input_len, u8t* outp
     if (message.pdu.error_status != ERROR_STATUS_NO_ERROR) {
         u8t i;
         for (i = 0; i < message.pdu.var_bind_list_len; i++) {
-            message.pdu.var_bind_list[i].value.len = varbind_t_null.len;
-            memcpy(&message.pdu.var_bind_list[i].value.buffer, &varbind_t_null.buffer, varbind_t_null.len);
+            message.pdu.var_bind_list[i].value = NULL;
         }
     }
 
