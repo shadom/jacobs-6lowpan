@@ -22,9 +22,13 @@
 #ifndef __MIB_H__
 #define __MIB_H__
 
-#include "snmpd-types.h"
+#include "snmp.h"
 
-//static const oid_t m_system_oid		= { { 1, 3, 6, 1, 2, 1, 1			}, 7, 8  };
+s8t mib_init();
 
+s8t mib_get(varbind_t* req);
+
+s8t mib_get_next(varbind_t* req);
+
+s8t mib_set(u8t index, varbind_t* req);
 #endif /* __MIB_H__ */
-

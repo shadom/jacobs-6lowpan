@@ -1,0 +1,1 @@
+SNMPv2-MIB::system.11.0 = STRING: "Pointer to a string"
