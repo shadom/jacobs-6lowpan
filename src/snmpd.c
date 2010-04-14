@@ -29,6 +29,7 @@
 #include "snmpd.h"
 #include "snmpd-conf.h"
 #include "snmp-protocol.h"
+#include "mib.h"
 #include "logging.h"
 
 #define UDP_IP_BUF   ((struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN])
@@ -54,7 +55,7 @@ static void udp_handler(process_event_t ev, process_data_t data)
     if (ev == tcpip_event && uip_newdata()) {
         uip_ipaddr_copy(&udpconn->ripaddr, &UDP_IP_BUF->srcipaddr);
         udpconn->rport = UDP_IP_BUF->srcport;
-
+        
         #if DEBUG && CONTIKI_TARGET_AVR_RAVEN
         req_len = uip_datalen();
         memcpy(request, uip_appdata, req_len);
@@ -71,12 +72,10 @@ static void udp_handler(process_event_t ev, process_data_t data)
         }
         respond[MAX_BUF_SIZE - 1] = 0;
 */
-
-        if (snmp_handler((u8_t*)uip_appdata, &uip_datalen(), respond, &resp_len, MAX_BUF_SIZE) == -1) {
+        if (snmp_handler((u8_t*)uip_appdata, uip_datalen(), respond, &resp_len, MAX_BUF_SIZE) == -1) {
             return;
         }
         #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
-
         uip_udp_packet_send(udpconn, respond, resp_len);
 
         memset(&udpconn->ripaddr, 0, sizeof(udpconn->ripaddr));
@@ -94,10 +93,15 @@ PROCESS_THREAD(snmpd_process, ev, data) {
 	udpconn = udp_new(NULL, HTONS(0), NULL);
 	udp_bind(udpconn, HTONS(LISTEN_PORT));
 
-	while(1) {
-            PROCESS_YIELD();
-            udp_handler(ev, data);
-	}
+        /* init MIB */
+        if (mib_init() != -1) {
+            while(1) {
+                PROCESS_YIELD();
+                udp_handler(ev, data);
+            }
+        } else {
+            snmp_log("error occurs while initializing the MIB\n");
+        }
 	PROCESS_END();
 }
 /*-----------------------------------------------------------------------------------*/

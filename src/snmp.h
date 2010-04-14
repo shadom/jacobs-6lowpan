@@ -38,44 +38,45 @@
 
 /** \brief OID. */
 typedef struct {
-    u16t values[OID_LEN];
-    u16t len;
+    OID_T   values[OID_LEN];
+    u16t    len;
 } oid_t;
 
 /** \brief Value of the variable binding. */
 typedef union {
-    s32t i_value;
-    u32t u_value;
+    s32t            i_value;
+    u32t            u_value;
     struct {
-        char*   ptr;
-        u16t    len;
+        u8t*        ptr;
+        u16t        len;
     } s_value;
 } varbind_value_t;
 
 /** \brief Variable binding. */
 typedef struct {
-    oid_t oid;
-    varbind_value_t* value;
+    oid_t               oid;
+    u8t                 value_type;
+    varbind_value_t     value;
 } varbind_t;
 
 /** \brief Request data structure. */
 typedef struct {
-    u8t request_type;
-    s32t request_id;
-    u8t error_status;
-    u8t error_index;
-    u8t var_bind_list_len;
-    varbind_t var_bind_list[VAR_BIND_LEN];
+    u8t         request_type;
+    s32t        request_id;
+    u8t         error_status;
+    u8t         error_index;
+    u8t         var_bind_list_len;
+    varbind_t   var_bind_list[VAR_BIND_LEN];
 } pdu_t;
 
 /** \brief Request data structure. */
 typedef struct {
-    u8t version;
-    u8t community[VALUE_LEN];
-    pdu_t pdu;
+    u8t     version;
+    u8t     community[VALUE_LEN];
+    pdu_t   pdu;
 } message_t;
 
-#define ERROR_STATUS_NO_ERROR					0
+#define ERROR_STATUS_NO_ERROR                           0
 #define ERROR_STATUS_TOO_BIG				1
 #define ERROR_STATUS_NO_SUCH_NAME			2
 #define ERROR_STATUS_BAD_VALUE				3

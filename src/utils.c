@@ -20,3 +20,15 @@
  */
 
 #include "utils.h"
+
+s8t oid_cmp(oid_t*  oid1, oid_t* oid2) {
+    static u8t j;
+    for (j = 0; j < min(oid1->len, oid2->len); j++) {
+        if (oid1->values[j] > oid2->values[j]) {
+            return 1;
+        } else if (oid1->values[j] < oid2->values[j]) {
+            return -1;
+        }
+    }
+    return 0;
+}

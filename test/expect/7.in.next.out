@@ -1,0 +1,5 @@
+getaddrinfo:  No address associated with hostname
+Error in packet.
+Reason: (noSuchName) There is no such variable name in this MIB.
+Failed object: IF-MIB::ifIndex.22
+

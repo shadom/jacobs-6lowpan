@@ -29,8 +29,12 @@
 #ifndef __SNMPD_UTILS_H__
 #define	__SNMPD_UTILS_H__
 
+#include "snmp-protocol.h"
+
 #define min(a,b) ((a>b) ? b : a)
 #define max(a,b) ((a>b) ? a : b)
+
+s8t oid_cmp(oid_t*  oid1, oid_t* oid2);
 
 
 #endif	/* __SNMPD_UTILS_H__ */

@@ -20,14 +20,12 @@
  */
 
 #include <stdlib.h>
-
-
 #include <string.h>
 
 #include "snmp-protocol.h"
 #include "ber.h"
+#include "mib.h"
 #include "logging.h"
-
 
 /*-----------------------------------------------------------------------------------*/
 /*
@@ -35,8 +33,69 @@
  */
 static s8t snmp_get(message_t* message)
 {
-    message->pdu.error_status = ERROR_STATUS_GEN_ERR;
-    message->pdu.error_index = 1;
+    static u8t i;
+    for (i = 0; i < message->pdu.var_bind_list_len; i++) {
+        if (mib_get(&message->pdu.var_bind_list[i]) == -1) {
+            message->pdu.error_status = ERROR_STATUS_NO_SUCH_NAME;
+            message->pdu.error_index = i + 1;
+            break;
+        }
+    }    
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Handle an SNMP GETNEXT request
+ */
+static s8t snmp_get_next(message_t* message)
+{
+    static u8t i;
+    for (i = 0; i < message->pdu.var_bind_list_len; i++) {
+        if (mib_get_next(&message->pdu.var_bind_list[i]) == -1) {
+            message->pdu.error_status = ERROR_STATUS_NO_SUCH_NAME;
+            message->pdu.error_index = i + 1;
+            break;
+        }
+    }
+    return 0;
+}
+
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Handle an SNMP SET request
+ */
+static s8t snmp_set(message_t* message)
+{
+    static u8t i;
+    static u8t var_index[VAR_BIND_LEN];
+    static varbind_t tmp_var_bind;
+    /* find mib objects and check their types */
+    for (i = 0; i < message->pdu.var_bind_list_len; i++) {
+        memcpy(&tmp_var_bind, &message->pdu.var_bind_list[i], sizeof(varbind_t));
+        if ((var_index[i] = mib_get(&tmp_var_bind)) == -1) {
+            message->pdu.error_status = ERROR_STATUS_NO_SUCH_NAME;
+            message->pdu.error_index = i + 1;
+            break;
+        }
+        if (tmp_var_bind.value_type != message->pdu.var_bind_list[i].value_type) {
+            message->pdu.error_status = ERROR_STATUS_BAD_VALUE;
+            message->pdu.error_index = i + 1;
+            break;
+        }
+    }
+
+    /* execute set operations for all mib objects in varbindings */
+    if (message->pdu.error_status == ERROR_STATUS_NO_ERROR) {
+        for (i = 0; i < message->pdu.var_bind_list_len; i++) {
+            if (mib_set(var_index[i], &message->pdu.var_bind_list[i]) == -1) {
+                message->pdu.error_status = ERROR_STATUS_GEN_ERR;
+                message->pdu.error_index = i + 1;
+                return -1;
+            }
+        }
+    }
     return 0;
 }
 
@@ -44,15 +103,24 @@ static s8t snmp_get(message_t* message)
 /*
  * Handle an SNMP request
  */
-s8t snmp_handler(const u8t* const input,  const u16t* const input_len, u8t* output, u16t* output_len, const u16t max_output_len)
+s8t snmp_handler(const u8t* const input,  const u16t input_len, u8t* output, u16t* output_len, const u16t max_output_len)
 {
     static message_t message;
+    /* copy of the input varbindings */
+    static varbind_t var_bind_list[VAR_BIND_LEN];
+    
     memset(&message, 0, sizeof(message_t));
-
+    
     /* parse the incoming datagram and build an ASN.1 object */
-    if (ber_decode_request(input, input_len, &message) == -1) {
+    s8t ret = ber_decode_request(input, input_len, &message);
+    if (ret == -1) {
         /* if the parse fails, it discards the datagram and performs no further actions. */
         return -1;
+    } else if (ret == BER_ERROR_TOO_MANY_ENTRIES) {
+        // too big
+        message.pdu.error_status = ERROR_STATUS_TOO_BIG;
+    } else {
+        memcpy(var_bind_list, message.pdu.var_bind_list, message.pdu.var_bind_list_len * sizeof(varbind_t));
     }
 
     /* authentication scheme */
@@ -70,26 +138,51 @@ s8t snmp_handler(const u8t* const input,  const u16t* const input_len, u8t* outp
     if (message.pdu.error_status == ERROR_STATUS_NO_ERROR) {
         if (message.pdu.request_type == BER_TYPE_SNMP_GET) {
             snmp_get(&message);
+        } else if (message.pdu.request_type == BER_TYPE_SNMP_GETNEXT) {
+            snmp_get_next(&message);
+        } else if (message.pdu.request_type == BER_TYPE_SNMP_SET) {
+            snmp_set(&message);
         }
     }
 
-    /* if, for any object named in the variable-bindings field,
+    /* If, for any object named in the variable-bindings field,
        an error occurs, then the receiving entity sends to the originator
        of the received message the message of identical form,
        except that the value of the error-status field is set */
     if (message.pdu.error_status != ERROR_STATUS_NO_ERROR) {
         u8t i;
+        if ((message.pdu.request_type == BER_TYPE_SNMP_GETNEXT || message.pdu.request_type == BER_TYPE_SNMP_SET)
+                && message.pdu.error_status != ERROR_STATUS_TOO_BIG) {
+            memcpy(message.pdu.var_bind_list, var_bind_list, message.pdu.var_bind_list_len * sizeof(varbind_t));
+        }
         for (i = 0; i < message.pdu.var_bind_list_len; i++) {
-            message.pdu.var_bind_list[i].value = NULL;
+            message.pdu.var_bind_list[i].value_type = BER_TYPE_NULL;
         }
     }
 
+    /* copy the value */
     /* encode the response */
     if (ber_encode_response(&message, output, output_len, max_output_len) == -1) {
+        /* Too big message.
+         * If the size of the GetResponse-PDU generated as described
+         * below would exceed a local limitation, then the receiving
+         * entity sends to the originator of the received message
+         * the GetResponse-PDU of identical form, except that the
+         * value of the error-status field is tooBig, and the value
+         * of the error-index field is zero.
+         */
+        memcpy(message.pdu.var_bind_list, var_bind_list, message.pdu.var_bind_list_len * sizeof(varbind_t));
+        u8t i;
+        for (i = 0; i < message.pdu.var_bind_list_len; i++) {
+            message.pdu.var_bind_list[i].value_type = BER_TYPE_NULL;
+        }
+        message.pdu.error_status = ERROR_STATUS_TOO_BIG;
+        message.pdu.error_index = 0;
+        if (ber_encode_response(&message, output, output_len, max_output_len) == -1) {
             return -1;
+        }
     }
 
     snmp_log("processing finished\n---------------------------------\n");
     return 0;
 }
-

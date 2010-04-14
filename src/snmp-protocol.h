@@ -31,7 +31,7 @@
 
 #include "snmp.h"
 
-s8t snmp_handler(const u8t* const input,  const u16t* const input_len, u8t* output, u16t* output_len, const u16t max_output_len);
+s8t snmp_handler(const u8t* const input,  const u16t input_len, u8t* output, u16t* output_len, const u16t max_output_len);
 
 #endif	/* __SNMP_PROTOCOL_H__ */
 
