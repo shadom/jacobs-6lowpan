@@ -46,9 +46,6 @@
 /** maximum number of entries in the MIB */
 #define MIB_LEN                 8
 
-/** maximum length of the value of a variable bindings in a response (in octets)*/
-#define VALUE_LEN      255
-
 #define OID_T   u16t
 
 #endif	/* __SNMP_CONF_H__ */
