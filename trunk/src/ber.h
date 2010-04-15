@@ -48,7 +48,7 @@
 #define BER_TYPE_OPAQUE                                 0x44
 #define BER_TYPE_NASAPADDRESS                           0x45
 #define BER_TYPE_COUNTER64                              0x46
-#define BER_TYPE_UINTEGER32                             0x47
+#define BER_TYPE_UINTEGER32                             0x42
 #define BER_TYPE_NO_SUCH_OBJECT                         0x80
 #define BER_TYPE_NO_SUCH_INSTANCE                       0x81
 #define BER_TYPE_END_OF_MIB_VIEW                        0x82
@@ -77,9 +77,11 @@ s8t ber_decode_sequence(const u8t* const input, const u16t len, u16t* pos, u8t i
 
 s8t ber_decode_oid(const u8t* const input, const u16t len, u16t* pos, oid_t* o);
 
-s8t ber_decode_string(const u8t* const input, const u16t len, u16t* pos, u16t* field_len, u8t* value, u8t value_len);
+s8t ber_decode_string(const u8t* const input, const u16t len, u16t* pos, u8t** value, u16t* field_len);
 
-s8t ber_decode_oid(const u8t* const input, const u16t len, u16t* pos, oid_t* o );
+s8t ber_decode_integer(const u8t* const input, const u16t len, u16t* pos, s32t* value);
+
+s8t ber_decode_unsigned_integer(const u8t* const input, const u16t len, u16t* pos, u32t* value);
 
 s8t ber_decode_void(const u8t* const input, const u16t len, u16t* pos);
 

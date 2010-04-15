@@ -80,6 +80,7 @@ static s8t snmp_set(message_t* message)
             break;
         }
         if (tmp_var_bind.value_type != message->pdu.var_bind_list[i].value_type) {
+            snmp_log("bad value type %d %d\n", tmp_var_bind.value_type, message->pdu.var_bind_list[i].value_type);
             message->pdu.error_status = ERROR_STATUS_BAD_VALUE;
             message->pdu.error_index = i + 1;
             break;
@@ -99,6 +100,12 @@ static s8t snmp_set(message_t* message)
     return 0;
 }
 
+void free_message(message_t* message) {
+    if (message->community) {
+        free(message->community);
+    }
+}
+
 /*-----------------------------------------------------------------------------------*/
 /*
  * Handle an SNMP request
@@ -115,6 +122,7 @@ s8t snmp_handler(const u8t* const input,  const u16t input_len, u8t* output, u16
     s8t ret = ber_decode_request(input, input_len, &message);
     if (ret == -1) {
         /* if the parse fails, it discards the datagram and performs no further actions. */
+        free_message(&message);
         return -1;
     } else if (ret == BER_ERROR_TOO_MANY_ENTRIES) {
         // too big
@@ -179,10 +187,11 @@ s8t snmp_handler(const u8t* const input,  const u16t input_len, u8t* output, u16
         message.pdu.error_status = ERROR_STATUS_TOO_BIG;
         message.pdu.error_index = 0;
         if (ber_encode_response(&message, output, output_len, max_output_len) == -1) {
+            free_message(&message);
             return -1;
         }
     }
-
+    free_message(&message);
     snmp_log("processing finished\n---------------------------------\n");
     return 0;
 }

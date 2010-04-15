@@ -38,13 +38,13 @@
 #define COMMUNITY_STRING        "public"
 
 /** maximum number of variable bindings in a request */
-#define VAR_BIND_LEN            16
+#define VAR_BIND_LEN            4
 
 /** maximum number of elements in an OID */
-#define OID_LEN                 20
+#define OID_LEN                 15
 
 /** maximum number of entries in the MIB */
-#define MIB_LEN                 16
+#define MIB_LEN                 8
 
 /** maximum length of the value of a variable bindings in a response (in octets)*/
 #define VALUE_LEN      255

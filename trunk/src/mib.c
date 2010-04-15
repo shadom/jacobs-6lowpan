@@ -30,6 +30,7 @@
 static const oid_t oid_system	= { { 1, 3, 6, 1, 2, 1, 1}, 7};
 static const oid_t oid_if	= { { 1, 3, 6, 1, 2, 1, 2}, 7};
 static const oid_t oid_if_table	= { { 1, 3, 6, 1, 2, 1, 2, 2, 1}, 9};
+static const oid_t oid_test	= { { 1, 3, 6, 1, 2, 1, 1234}, 7};
 
 typedef struct mib_object_t mib_object_t;
 
@@ -65,8 +66,10 @@ static u16t mib_length = 0;
 /***************************************************/
 s8t getSysDescr(mib_object_t* object, OID_T* oid, u16t len)
 {
-    object->varbind.value.s_value.ptr = (u8t*)"System Description";
-    object->varbind.value.s_value.len = 18;
+    if (!object->varbind.value.s_value.len) {
+        object->varbind.value.s_value.ptr = (u8t*)"System Description";
+        object->varbind.value.s_value.len = 18;
+    }
     return 0;
 }
 
@@ -171,8 +174,8 @@ s8t add_scalar(const oid_t* prefix, const OID_T object_id, u8t value_type, const
                 break;
 
             case BER_TYPE_COUNTER:
-            case BER_TYPE_GAUGE:
             case BER_TYPE_TIME_TICKS:
+            case BER_TYPE_UINTEGER32:
                 mib[mib_length].varbind.value.u_value = *((u32t*)value);
                 break;
             default:
@@ -338,8 +341,8 @@ s8t mib_set(u8t index, varbind_t* req)
                 /* TODO: implement */
                 return -1;
             case BER_TYPE_COUNTER:
-            case BER_TYPE_GAUGE:
             case BER_TYPE_TIME_TICKS:
+            case BER_TYPE_UINTEGER32:
                 mib[index].varbind.value.u_value = req->value.u_value;
                 break;
             default:
@@ -368,6 +371,11 @@ s8t mib_init()
     }
 
     if (add_table(&oid_if_table, &getIf, &getNextIfOid, 0) == -1) {
+        return -1;
+    }
+
+   if (add_scalar(&oid_test, 1, BER_TYPE_INTEGER, 0, 0, 0) == -1 ||
+       add_scalar(&oid_test, 2, BER_TYPE_UINTEGER32, 0, 0, 0) == -1) {
         return -1;
     }
 

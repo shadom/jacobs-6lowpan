@@ -72,7 +72,7 @@ typedef struct {
 /** \brief Request data structure. */
 typedef struct {
     u8t     version;
-    u8t     community[VALUE_LEN];
+    u8t*    community;
     pdu_t   pdu;
 } message_t;
 

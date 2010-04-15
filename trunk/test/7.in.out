@@ -1,5 +1,2 @@
-getaddrinfo:  No address associated with hostname
-Error in packet.
-Reason: (noSuchName) There is no such variable name in this MIB.
-Failed object: IF-MIB::ifIndex.22
-
+SNMPv2-SMI::mib-2.1234.1.0 = INTEGER: 0
+ hostname
