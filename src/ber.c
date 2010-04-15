@@ -19,6 +19,7 @@
  *
  */
 #include <string.h>
+#include <stdlib.h>
 
 #include "ber.h"
 #include "logging.h"
@@ -63,7 +64,6 @@ s8t ber_decode_type(const u8t* const input, const u16t len, u16t* pos, u8t* type
             case BER_TYPE_SEQUENCE:
             case BER_TYPE_IPADDRESS:
             case BER_TYPE_COUNTER:
-            case BER_TYPE_GAUGE:
             case BER_TYPE_TIME_TICKS:
             case BER_TYPE_OPAQUE:
             case BER_TYPE_NASAPADDRESS:
@@ -161,7 +161,7 @@ s8t ber_decode_sequence(const u8t* const input, const u16t len, u16t* pos, u8t i
 /*
  * Decode a BER encoded integer value.
  */
-s8t ber_decode_integer_value(const u8t* const input, const u16t len, u16t* pos, s32t* value)
+s8t ber_decode_integer(const u8t* const input, const u16t len, u16t* pos, s32t* value)
 {
     /* type and length */
     TRY(ber_decode_type_length(input, len, pos, &s_type, &s_length));
@@ -186,13 +186,51 @@ s8t ber_decode_integer_value(const u8t* const input, const u16t len, u16t* pos, 
 
 /*-----------------------------------------------------------------------------------*/
 /*
+ * Decode a BER encoded integer value.
+ */
+s8t ber_decode_unsigned_integer(const u8t* const input, const u16t len, u16t* pos, u32t* value)
+{
+    /* type and length */
+    TRY(ber_decode_type_length(input, len, pos, &s_type, &s_length));
+    if (s_type != BER_TYPE_UINTEGER32 || s_length < 1) {
+        snmp_log("bad type or length value for an expected integer: type %02X length %d\n", s_type, s_length);
+        return -1;
+    }
+
+    /* type */
+    if (*pos + s_length - 1 < len) {
+        *value = 0;
+        while (s_length--) {
+            *value = (*value << 8) | input[*pos];
+            *pos = *pos + 1;
+        }
+    } else {
+        snmp_log("can't fetch an unsigned integer: unexpected end of the SNMP request\n");
+        return -1;
+    }
+    return 0;
+}
+
+
+/*-----------------------------------------------------------------------------------*/
+/*
  * Decode a BER encoded unsigned integer value.
  */
-s8t ber_decode_string(const u8t* const input, const u16t len, u16t* pos, u16t* field_len, u8t* value, u8t value_len)
+s8t ber_decode_string(const u8t* const input, const u16t len, u16t* pos, u8t** value, u16t* field_len)
 {
+    TRY(ber_decode_type_length(input, len, pos, &s_type, field_len));
+    if (s_type != BER_TYPE_OCTET_STRING) {
+        snmp_log("SNMP string must be of type %02X, byt not %02X\n", BER_TYPE_OCTET_STRING, s_type);
+        return -1;
+    }
     if (*pos + *field_len - 1 < len) {
-        memcpy(value, &input[*pos], *field_len);
-        value[*field_len] = 0;
+        *value = (u8t*)malloc(*field_len + 1);
+        if (*value == NULL) {
+            snmp_log("memory can't be allocated for a string\n");
+            return -1;
+        }
+        memcpy(*value, &input[*pos], *field_len);
+        (*value)[*field_len] = 0;
         *pos = *pos + *field_len;
     } else {
         snmp_log("can't fetch an octet string: unexpected end of the SNMP input\n");
@@ -283,6 +321,46 @@ s8t ber_decode_void(const u8t* const input, const u16t len, u16t* pos)
 
 /*-----------------------------------------------------------------------------------*/
 /*
+ * Decode a BER encoded value.
+ */
+s8t ber_decode_value(const u8t* const input, const u16t len, u16t* pos, u8t* value_type, varbind_value_t* value) {
+    if (*pos < len) {
+        *value_type = input[*pos];
+        switch (input[*pos]) {
+            case BER_TYPE_INTEGER:
+                TRY(ber_decode_integer(input, len, pos, &value->i_value));
+                break;
+            case BER_TYPE_UINTEGER32:
+                TRY(ber_decode_unsigned_integer(input, len, pos, &value->u_value));
+                break;
+            case BER_TYPE_OCTET_STRING:
+                TRY(ber_decode_string(input, len, pos, &(value->s_value.ptr), &(value->s_value.len)));
+                break;
+            case BER_TYPE_BIT_STRING:
+                return -1;
+            case BER_TYPE_NULL:
+                TRY(ber_decode_void(input, len, pos));
+                break;
+            case BER_TYPE_OID:
+                return -1;
+            case BER_TYPE_IPADDRESS:
+                return -1;
+            case BER_TYPE_TIME_TICKS:
+                return -1;
+
+            default:
+                snmp_log("unsupported BER type %02X\n", input[*pos]);
+                return -1;
+        }
+    } else {
+        snmp_log("unexpected end of the SNMP request (pos=%d, len=%d) [1]\n", *pos, len);
+        return -1;
+    }
+    return 0;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
  * Parse a BER encoded SNMP request.
  */
 s8t ber_decode_pdu(const u8t* const input, const u16t len, u16t* pos, pdu_t* pdu) {
@@ -299,16 +377,16 @@ s8t ber_decode_pdu(const u8t* const input, const u16t len, u16t* pos, pdu_t* pdu
     snmp_log("request type: %d\n", pdu->request_type);
 
     /* request-id */
-    TRY(ber_decode_integer_value(input, len, pos, &pdu->request_id));
+    TRY(ber_decode_integer(input, len, pos, &pdu->request_id));
     snmp_log("request id: %d\n", pdu->request_id);
 
     /* error-state */
-    TRY(ber_decode_integer_value(input, len, pos, &tmp));
+    TRY(ber_decode_integer(input, len, pos, &tmp));
     pdu->error_status = (u8t)tmp;
     snmp_log("error-status: %d\n", pdu->error_status);
 
     /* error-index */
-    TRY(ber_decode_integer_value(input, len, pos, &tmp));
+    TRY(ber_decode_integer(input, len, pos, &tmp));
     pdu->error_index = (u8t)tmp;
     snmp_log("error-index: %d\n", pdu->error_index);
 
@@ -330,7 +408,8 @@ s8t ber_decode_pdu(const u8t* const input, const u16t len, u16t* pos, pdu_t* pdu
         TRY(ber_decode_oid(input, len, pos, &pdu->var_bind_list[pdu->var_bind_list_len].oid));
 
         /* void value */
-        TRY(ber_decode_void(input, len, pos));
+        TRY(ber_decode_value(input, len, pos, &pdu->var_bind_list[pdu->var_bind_list_len].value_type, &pdu->var_bind_list[pdu->var_bind_list_len].value));
+        //TRY(ber_decode_void(input, len, pos));
         pdu->var_bind_list_len++;
     }
     return 0;
@@ -343,7 +422,6 @@ s8t ber_decode_pdu(const u8t* const input, const u16t len, u16t* pos, pdu_t* pdu
 s8t ber_decode_request(const u8t* const input, const u16t len, message_t* request)
 {
     static u16t pos, length;
-    static u8t type;
     static s32t tmp;
 
     pos = 0;
@@ -352,7 +430,7 @@ s8t ber_decode_request(const u8t* const input, const u16t len, message_t* reques
     TRY(ber_decode_sequence(input, len, &pos, 1));
 
     /* version */
-    TRY(ber_decode_integer_value(input, len, &pos, &tmp));
+    TRY(ber_decode_integer(input, len, &pos, &tmp));
     request->version = (u8t)tmp;
     if (request->version != SNMP_VERSION_1 && request->version != SNMP_VERSION_2C) {
         /* it then verifies the version number of the SNMP message.  */
@@ -363,16 +441,7 @@ s8t ber_decode_request(const u8t* const input, const u16t len, message_t* reques
     snmp_log("snmp version: %d\n", request->version);
 
     /* community name */
-    TRY(ber_decode_type_length(input, len, &pos, &type, &length));
-    if (type != BER_TYPE_OCTET_STRING) {
-        snmp_log("SNMP community string must be of type %02X, byt not %02X\n", BER_TYPE_OCTET_STRING, type);
-        return -1;
-    }
-    if (length >= VALUE_LEN) {
-        snmp_log("community string is too long (must be up to 31 character)\n");
-        return -1;
-    }
-    if (ber_decode_string((u8t*)input, len, &pos, &length, request->community, VALUE_LEN) == -1) {
+    if (ber_decode_string((u8t*)input, len, &pos, &request->community, &length) == -1) {
         return -1;
     } else if (strlen((char*)request->community) < 1) {
         snmp_log("unsupported SNMP community '%s'\n", request->community);
