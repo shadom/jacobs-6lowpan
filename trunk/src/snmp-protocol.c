@@ -101,8 +101,20 @@ static s8t snmp_set(message_t* message)
 }
 
 void free_message(message_t* message) {
+    /* free memory for the community string */
     if (message->community) {
         free(message->community);
+    }
+
+    /* free memory for string values */
+    static int i;
+    if (message->pdu.request_type == BER_TYPE_SNMP_SET) {
+        for (i = 0;  i < message->pdu.var_bind_list_len; i++) {
+            if (message->pdu.var_bind_list[i].value_type == BER_TYPE_OCTET_STRING &&
+                    message->pdu.var_bind_list[i].value.s_value.ptr) {
+                free(message->pdu.var_bind_list[i].value.s_value.ptr);
+            }
+        }
     }
 }
 

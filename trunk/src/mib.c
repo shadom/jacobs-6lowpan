@@ -19,6 +19,7 @@
  *
  */
 #include <string.h>
+#include <stdlib.h>
 
 #include "mib.h"
 #include "snmp-protocol.h"
@@ -161,8 +162,13 @@ s8t add_scalar(const oid_t* prefix, const OID_T object_id, u8t value_type, const
     if (value) {
         switch (value_type) {
             case BER_TYPE_OCTET_STRING:
-                mib[mib_length].varbind.value.s_value.ptr = (u8t*)value;
                 mib[mib_length].varbind.value.s_value.len = strlen((char*)value);
+                mib[mib_length].varbind.value.s_value.ptr = (u8t*)malloc(mib[mib_length].varbind.value.s_value.len);
+                if (!mib[mib_length].varbind.value.s_value.ptr) {
+                    snmp_log("can not allocate memory for a string\n");
+                    return -1;
+                }
+                memcpy(mib[mib_length].varbind.value.s_value.ptr, value, mib[mib_length].varbind.value.s_value.len);
                 break;
 
             case BER_TYPE_INTEGER:
@@ -329,8 +335,16 @@ s8t mib_set(u8t index, varbind_t* req)
     } else {
         switch (req->value_type) {
             case BER_TYPE_OCTET_STRING:
-                //varbind->value.s_value.ptr
-                //varbind->value.s_value.len
+                if (mib[index].varbind.value.s_value.ptr) {
+                    free(mib[index].varbind.value.s_value.ptr);
+                }
+                mib[index].varbind.value.s_value.len = req->value.s_value.len;
+                mib[index].varbind.value.s_value.ptr = (u8t*)malloc(req->value.s_value.len);
+                if (!mib[index].varbind.value.s_value.ptr) {
+                    snmp_log("can not allocate memory for a string\n");
+                    return -1;
+                }
+                memcpy(mib[index].varbind.value.s_value.ptr, req->value.s_value.ptr, mib[index].varbind.value.s_value.len);
                 break;
 
             case BER_TYPE_INTEGER:
@@ -374,7 +388,7 @@ s8t mib_init()
         return -1;
     }
 
-   if (add_scalar(&oid_test, 1, BER_TYPE_INTEGER, 0, 0, 0) == -1 ||
+    if (add_scalar(&oid_test, 1, BER_TYPE_INTEGER, 0, 0, 0) == -1 ||
        add_scalar(&oid_test, 2, BER_TYPE_UINTEGER32, 0, 0, 0) == -1) {
         return -1;
     }
