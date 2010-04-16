@@ -23,6 +23,7 @@
 
 #include "ber.h"
 #include "logging.h"
+#include "utils.h"
 
 
 #define DECN(pos, value) (*pos) -= value; if (*pos < 0) { snmp_log("too big message: %d\n", __LINE__); return -1;}
@@ -68,7 +69,7 @@ s8t ber_decode_type(const u8t* const input, const u16t len, u16t* pos, u8t* type
             case BER_TYPE_OPAQUE:
             case BER_TYPE_NASAPADDRESS:
             case BER_TYPE_COUNTER64:
-            case BER_TYPE_UINTEGER32:
+            case BER_TYPE_GAUGE:
             case BER_TYPE_NO_SUCH_OBJECT:
             case BER_TYPE_NO_SUCH_INSTANCE:
             case BER_TYPE_END_OF_MIB_VIEW:
@@ -192,7 +193,7 @@ s8t ber_decode_unsigned_integer(const u8t* const input, const u16t len, u16t* po
 {
     /* type and length */
     TRY(ber_decode_type_length(input, len, pos, &s_type, &s_length));
-    if (s_type != BER_TYPE_UINTEGER32 || s_length < 1) {
+    if (s_type != BER_TYPE_GAUGE || s_length < 1) {
         snmp_log("bad type or length value for an expected integer: type %02X length %d\n", s_type, s_length);
         return -1;
     }
@@ -227,7 +228,7 @@ s8t ber_decode_string(const u8t* const input, const u16t len, u16t* pos, u8t** v
         *value = (u8t*)malloc(*field_len + 1);
         if (*value == NULL) {
             snmp_log("memory can't be allocated for a string\n");
-            return -1;
+            return ERR_MEMORY_ALLOCATION;
         }
         memcpy(*value, &input[*pos], *field_len);
         (*value)[*field_len] = 0;
@@ -330,24 +331,21 @@ s8t ber_decode_value(const u8t* const input, const u16t len, u16t* pos, u8t* val
             case BER_TYPE_INTEGER:
                 TRY(ber_decode_integer(input, len, pos, &value->i_value));
                 break;
-            case BER_TYPE_UINTEGER32:
-                TRY(ber_decode_unsigned_integer(input, len, pos, &value->u_value));
-                break;
+            case BER_TYPE_IPADDRESS:
             case BER_TYPE_OCTET_STRING:
                 TRY(ber_decode_string(input, len, pos, &(value->s_value.ptr), &(value->s_value.len)));
                 break;
-            case BER_TYPE_BIT_STRING:
-                return -1;
             case BER_TYPE_NULL:
                 TRY(ber_decode_void(input, len, pos));
                 break;
+            case BER_TYPE_GAUGE:
+            case BER_TYPE_TIME_TICKS:
+            case BER_TYPE_COUNTER:
+                TRY(ber_decode_unsigned_integer(input, len, pos, &value->u_value));
+                break;
+            case BER_TYPE_OPAQUE:
             case BER_TYPE_OID:
                 return -1;
-            case BER_TYPE_IPADDRESS:
-                return -1;
-            case BER_TYPE_TIME_TICKS:
-                return -1;
-
             default:
                 snmp_log("unsupported BER type %02X\n", input[*pos]);
                 return -1;
@@ -391,26 +389,33 @@ s8t ber_decode_pdu(const u8t* const input, const u16t len, u16t* pos, pdu_t* pdu
     snmp_log("error-index: %d\n", pdu->error_index);
 
     /* variable-bindings */
+    pdu->varbind_index = *pos;
+    snmp_log("varbind index %d\n", *pos);
     TRY(ber_decode_sequence(input, len, pos, 1));
 
     /* variable binding list */
-    pdu->var_bind_list_len = 0;
+    pdu->varbind_len = 0;
+    pdu->varbind_first_ptr = 0;
+    varbind_t* cur_ptr = 0;
     while (*pos < len) {
-        if (pdu->var_bind_list_len >= VAR_BIND_LEN) {
-            snmp_log("exceeded the maximum supported number of variable bindings: max=%d\n", VAR_BIND_LEN);
-            return BER_ERROR_TOO_MANY_ENTRIES;
-        }
-
         /* sequence */
         TRY(ber_decode_sequence(input, len, pos, 0));
 
+        if (!pdu->varbind_first_ptr) {
+            cur_ptr = pdu->varbind_first_ptr = varbind_list_append(0);
+        } else {
+            cur_ptr = varbind_list_append(cur_ptr);
+        }
+        if (!cur_ptr) {
+            return ERR_MEMORY_ALLOCATION;
+        }
+        
         /* OID */
-        TRY(ber_decode_oid(input, len, pos, &pdu->var_bind_list[pdu->var_bind_list_len].oid));
+        TRY(ber_decode_oid(input, len, pos, &cur_ptr->oid));
 
         /* void value */
-        TRY(ber_decode_value(input, len, pos, &pdu->var_bind_list[pdu->var_bind_list_len].value_type, &pdu->var_bind_list[pdu->var_bind_list_len].value));
-        //TRY(ber_decode_void(input, len, pos));
-        pdu->var_bind_list_len++;
+        TRY(ber_decode_value(input, len, pos, &cur_ptr->value_type, &cur_ptr->value));
+        pdu->varbind_len++;
     }
     return 0;
 }
@@ -683,18 +688,25 @@ s8t ber_encode_var_bind(u8t* output, s16t* pos, const varbind_t* const varbind)
 /*
  * Encode SNMP PDU
  */
-s8t ber_encode_pdu(u8t* output, s16t* pos, const pdu_t* const  pdu, const u16t max_output_len) {
-    s8t i;
+s8t ber_encode_pdu(u8t* output, s16t* pos, const u8t* const input, u16t input_len, const pdu_t* const  pdu, const u16t max_output_len)
+{
     s32t tmp;
-
+    u16t len;
     /* write in the reverse order */
 
-    /* variable binding list */
-    for (i = pdu->var_bind_list_len - 1; i >= 0; i--) {
-        TRY(ber_encode_var_bind(output, pos, &pdu->var_bind_list[i]));
+    if (pdu->error_status == ERROR_STATUS_NO_ERROR) {
+        /* variable binding list */
+        varbind_t* ptr = pdu->varbind_first_ptr;
+        while (ptr) {
+            TRY(ber_encode_var_bind(output, pos, ptr));
+            ptr = ptr->next_ptr;
+        }
+        u16t len = max_output_len - *pos;
+        TRY(ber_encode_type_length(output, pos, BER_TYPE_SEQUENCE, len));
+    } else {
+        DECN(pos, (input_len - pdu->varbind_index));
+        memcpy(&output[*pos], &input[pdu->varbind_index], input_len - pdu->varbind_index);
     }
-    u16t len = max_output_len - *pos;
-    TRY(ber_encode_type_length(output, pos, BER_TYPE_SEQUENCE, len));
 
     /* error index */
     tmp = pdu->error_index;
@@ -716,11 +728,11 @@ s8t ber_encode_pdu(u8t* output, s16t* pos, const pdu_t* const  pdu, const u16t m
 /*
  * Encode an SNMP response in BER
  */
-s8t ber_encode_response(const message_t* const message, u8t* output, u16t* output_len, const u16t max_output_len)
+s8t ber_encode_response(const message_t* const message, u8t* output, u16t* output_len, const u8t* const input, u16t input_len, const u16t max_output_len)
 {
     s32t tmp;
     s16t pos = max_output_len;
-    ber_encode_pdu(output, &pos, &message->pdu, max_output_len);
+    ber_encode_pdu(output, &pos, input, input_len, &message->pdu, max_output_len);
 
     /* community string */
     TRY(ber_encode_string(output, &pos, message->community));

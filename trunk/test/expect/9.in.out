@@ -1,0 +1,2 @@
+SNMPv2-SMI::mib-2.1234.1.0 = INTEGER: 0
+ hostname

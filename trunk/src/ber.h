@@ -32,6 +32,11 @@
 #include "snmp.h"
 
 /*
+ * Error codes
+ */
+#define ERR_MEMORY_ALLOCATION                           -2
+
+/*
  * BER identifiers for ASN.1 implementation of SNMP.
  */
 #define BER_TYPE_BOOLEAN                                0x01
@@ -48,7 +53,7 @@
 #define BER_TYPE_OPAQUE                                 0x44
 #define BER_TYPE_NASAPADDRESS                           0x45
 #define BER_TYPE_COUNTER64                              0x46
-#define BER_TYPE_UINTEGER32                             0x42
+#define BER_TYPE_GAUGE                                  0x42
 #define BER_TYPE_NO_SUCH_OBJECT                         0x80
 #define BER_TYPE_NO_SUCH_INSTANCE                       0x81
 #define BER_TYPE_END_OF_MIB_VIEW                        0x82
@@ -61,10 +66,6 @@
 #define BER_TYPE_SNMP_TRAP                              0xA7
 #define BER_TYPE_SNMP_REPORT                            0xA8
 
-/*
- * BER errors.
- */
-#define BER_ERROR_TOO_MANY_ENTRIES                      -2
 
 /* BER decoding */
 s8t ber_decode_type(const u8t* const input, const u16t len, u16t* pos, u8t* type);
@@ -105,9 +106,9 @@ s8t ber_encode_oid(u8t* output, s16t* pos, const oid_t* const oid);
 
 s8t ber_encode_var_bind(u8t* output, s16t* pos, const varbind_t* const varbind);
 
-s8t ber_encode_pdu(u8t* output, s16t* pos, const pdu_t* const pdu, const u16t max_output_len);
+s8t ber_encode_pdu(u8t* output, s16t* pos, const u8t* const input, u16t input_len, const pdu_t* const  pdu, const u16t max_output_len);
 
-s8t ber_encode_response(const message_t* const message, u8t* output, u16t* output_len, const u16t max_output_len);
+s8t ber_encode_response(const message_t* const message, u8t* output, u16t* output_len, const u8t* const input, u16t input_len, const u16t max_output_len);
 
 #endif	/* __BER_H__ */
 

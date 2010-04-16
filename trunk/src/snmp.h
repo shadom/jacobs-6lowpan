@@ -53,10 +53,11 @@ typedef union {
 } varbind_value_t;
 
 /** \brief Variable binding. */
-typedef struct {
+typedef struct varbind_t {
     oid_t               oid;
     u8t                 value_type;
     varbind_value_t     value;
+    struct varbind_t*   next_ptr;
 } varbind_t;
 
 /** \brief Request data structure. */
@@ -65,8 +66,10 @@ typedef struct {
     s32t        request_id;
     u8t         error_status;
     u8t         error_index;
-    u8t         var_bind_list_len;
-    varbind_t   var_bind_list[VAR_BIND_LEN];
+    varbind_t*  varbind_first_ptr;
+    u8t         varbind_len;
+    /* the index of the first varbind byte in the input message */
+    u16t        varbind_index;
 } pdu_t;
 
 /** \brief Request data structure. */

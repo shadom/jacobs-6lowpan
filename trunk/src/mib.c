@@ -161,6 +161,7 @@ s8t add_scalar(const oid_t* prefix, const OID_T object_id, u8t value_type, const
     /* set initial value if it's not NULL */
     if (value) {
         switch (value_type) {
+            case BER_TYPE_IPADDRESS:
             case BER_TYPE_OCTET_STRING:
                 mib[mib_length].varbind.value.s_value.len = strlen((char*)value);
                 mib[mib_length].varbind.value.s_value.ptr = (u8t*)malloc(mib[mib_length].varbind.value.s_value.len);
@@ -175,15 +176,17 @@ s8t add_scalar(const oid_t* prefix, const OID_T object_id, u8t value_type, const
                 mib[mib_length].varbind.value.i_value = *((s32t*)value);
                 break;
 
+            case BER_TYPE_COUNTER:
+            case BER_TYPE_TIME_TICKS:
+            case BER_TYPE_GAUGE:
+                mib[mib_length].varbind.value.u_value = *((u32t*)value);
+                break;
+
+            case BER_TYPE_OPAQUE:
             case BER_TYPE_OID:
                 // TODO: implement
                 break;
 
-            case BER_TYPE_COUNTER:
-            case BER_TYPE_TIME_TICKS:
-            case BER_TYPE_UINTEGER32:
-                mib[mib_length].varbind.value.u_value = *((u32t*)value);
-                break;
             default:
                 break;
         }
@@ -334,6 +337,7 @@ s8t mib_set(u8t index, varbind_t* req)
         }
     } else {
         switch (req->value_type) {
+            case BER_TYPE_IPADDRESS:
             case BER_TYPE_OCTET_STRING:
                 if (mib[index].varbind.value.s_value.ptr) {
                     free(mib[index].varbind.value.s_value.ptr);
@@ -351,14 +355,16 @@ s8t mib_set(u8t index, varbind_t* req)
                 mib[index].varbind.value.i_value = req->value.i_value;
                 break;
 
+            case BER_TYPE_COUNTER:
+            case BER_TYPE_TIME_TICKS:
+            case BER_TYPE_GAUGE:
+                mib[index].varbind.value.u_value = req->value.u_value;
+                break;
+
+            case BER_TYPE_OPAQUE:
             case BER_TYPE_OID:
                 /* TODO: implement */
                 return -1;
-            case BER_TYPE_COUNTER:
-            case BER_TYPE_TIME_TICKS:
-            case BER_TYPE_UINTEGER32:
-                mib[index].varbind.value.u_value = req->value.u_value;
-                break;
             default:
                 return -1;
         }
@@ -389,7 +395,7 @@ s8t mib_init()
     }
 
     if (add_scalar(&oid_test, 1, BER_TYPE_INTEGER, 0, 0, 0) == -1 ||
-       add_scalar(&oid_test, 2, BER_TYPE_UINTEGER32, 0, 0, 0) == -1) {
+       add_scalar(&oid_test, 2, BER_TYPE_GAUGE, 0, 0, 0) == -1) {
         return -1;
     }
 
