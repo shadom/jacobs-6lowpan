@@ -1,0 +1,15 @@
+* INITIAL memory usage - without SNMP
+
+AVR Memory Usage
+----------------
+Device: Unknown
+
+Program:   51332 bytes
+(.text + .data + .bootloader)
+
+Data:      10263 bytes
+(.data + .bss + .noinit)
+
+EEPROM:       54 bytes
+(.eeprom)
+

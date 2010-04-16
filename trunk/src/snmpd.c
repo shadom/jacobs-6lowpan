@@ -64,14 +64,6 @@ static void udp_handler(process_event_t ev, process_data_t data)
         }
         #else
 
-/*
-        resp_len = MAX_BUF_SIZE - 1;
-        s16t i;
-        for (i = 0; i < resp_len; i++) {
-            respond[i] = 64 + i / 100;
-        }
-        respond[MAX_BUF_SIZE - 1] = 0;
-*/
         if (snmp_handler((u8_t*)uip_appdata, uip_datalen(), respond, &resp_len, MAX_BUF_SIZE) == -1) {
             return;
         }
