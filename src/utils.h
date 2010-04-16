@@ -36,6 +36,17 @@
 
 s8t oid_cmp(oid_t*  oid1, oid_t* oid2);
 
+typedef struct u8t_list_t
+{
+    u8t             value;
+    struct u8t_list_t *next_ptr;
+} u8t_list_t;
+
+u8t_list_t* u8t_list_append(u8t_list_t* ptr, u8t value);
+
+void u8t_list_free(u8t_list_t* ptr);
+
+varbind_t* varbind_list_append(varbind_t* ptr);
 
 #endif	/* __SNMPD_UTILS_H__ */
 

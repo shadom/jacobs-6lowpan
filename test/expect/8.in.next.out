@@ -1,3 +1,17 @@
-getaddrinfo:  No address associated with hostname
-Error in packet.
-Reason: (tooBig) Response message would have been too large.
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34
+DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (1234) 0:00:12.34

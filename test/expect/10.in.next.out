@@ -1,0 +1,4 @@
+SNMPv2-MIB::system.13.0 = Timeticks: (4290535758) 496 days, 14:09:17.58
+n: (noSuchName) There is no such variable name in this MIB.
+Failed object: iso.4
+

@@ -1,0 +1,2 @@
+SNMPv2-SMI::mib-2.1234.2.0 = Gauge32: 0
+ hostname

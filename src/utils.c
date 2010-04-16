@@ -19,6 +19,8 @@
  *
  */
 
+#include <stdlib.h>
+
 #include "utils.h"
 
 s8t oid_cmp(oid_t*  oid1, oid_t* oid2) {
@@ -31,4 +33,37 @@ s8t oid_cmp(oid_t*  oid1, oid_t* oid2) {
         }
     }
     return 0;
+}
+
+u8t_list_t* u8t_list_append(u8t_list_t* ptr, u8t value)
+{
+    u8t_list_t* new_el_ptr = malloc(sizeof(u8t_list_t));
+    if (!new_el_ptr) return 0;
+
+    new_el_ptr->next_ptr = 0;
+    new_el_ptr->value = value;
+    if (ptr) {
+        ptr->next_ptr = new_el_ptr;
+    }
+    return new_el_ptr;
+}
+
+void u8t_list_free(u8t_list_t* ptr)
+{
+    while (ptr) {
+        u8t_list_t* next = ptr->next_ptr;
+        free(ptr);
+        ptr = next;
+    }
+}
+
+varbind_t* varbind_list_append(varbind_t* ptr)
+{
+    varbind_t* new_el_ptr = malloc(sizeof(varbind_t));
+    if (!new_el_ptr) return 0;
+    new_el_ptr->next_ptr = 0;
+    if (ptr) {
+        ptr->next_ptr = new_el_ptr;
+    }
+    return new_el_ptr;
 }
