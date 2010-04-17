@@ -13,3 +13,31 @@ Data:      10263 bytes
 EEPROM:       54 bytes
 (.eeprom)
 
+
+* CURRENT USAGE (without 800 bytes of response)
+
+Program:   61512 bytes
+(.text + .data + .bootloader)
+
+Data:      10564 bytes
+(.data + .bss + .noinit)
+
+EEPROM:       54 bytes
+(.eeprom
+
+
+* BER.C 
+
+ROM = 5860
+RAM = 145
+
+Device: Unknown
+
+Program:   55652 bytes
+(.text + .data + .bootloader)
+
+Data:      10419 bytes
+(.data + .bss + .noinit)
+
+EEPROM:       54 bytes
+(.eeprom)

@@ -68,46 +68,9 @@
 
 
 /* BER decoding */
-s8t ber_decode_type(const u8t* const input, const u16t len, u16t* pos, u8t* type);
-
-s8t ber_decode_length(const u8t* const input, const u16t len, u16t* pos, u16t* length);
-
-s8t ber_decode_type_length(const u8t* const input, const u16t len, u16t* pos, u8t* type, u16t* length);
-
-s8t ber_decode_sequence(const u8t* const input, const u16t len, u16t* pos, u8t is_last);
-
-s8t ber_decode_oid(const u8t* const input, const u16t len, u16t* pos, oid_t* o);
-
-s8t ber_decode_string(const u8t* const input, const u16t len, u16t* pos, u8t** value, u16t* field_len);
-
-s8t ber_decode_integer(const u8t* const input, const u16t len, u16t* pos, s32t* value);
-
-s8t ber_decode_unsigned_integer(const u8t* const input, const u16t len, u16t* pos, u32t* value);
-
-s8t ber_decode_void(const u8t* const input, const u16t len, u16t* pos);
-
-s8t ber_decode_pdu(const u8t* const input, const u16t len, u16t* pos, pdu_t* pdu);
-
 s8t ber_decode_request(const u8t* const input, const u16t len, message_t* request);
 
 /* BER encoding */
-
-s8t ber_encode_length(u8t* output, s16t* pos, const u16t length);
-
-s8t ber_encode_type_length(u8t* output, s16t* pos, const u8t type, const u16t len);
-
-s8t ber_encode_integer(u8t* output, s16t* pos, const s32t value);
-
-s8t ber_encode_unsigned_integer(u8t* output, s16t* pos, const u8t type, const u32t value);
-
-s8t ber_encode_string(u8t* output, s16t* pos, const u8t* const str_value);
-
-s8t ber_encode_oid(u8t* output, s16t* pos, oid_t* const oid);
-
-s8t ber_encode_var_bind(u8t* output, s16t* pos, const varbind_t* const varbind);
-
-s8t ber_encode_pdu(u8t* output, s16t* pos, const u8t* const input, u16t input_len, const pdu_t* const  pdu, const u16t max_output_len);
-
 s8t ber_encode_response(const message_t* const message, u8t* output, u16t* output_len, const u8t* const input, u16t input_len, const u16t max_output_len);
 
 #endif	/* __BER_H__ */
