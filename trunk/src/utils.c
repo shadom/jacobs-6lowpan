@@ -22,15 +22,19 @@
 #include <stdlib.h>
 
 #include "utils.h"
+#include "logging.h"
 
 s8t oid_cmp(oid_t*  oid1, oid_t* oid2) {
-    static u8t j;
-    for (j = 0; j < min(oid1->len, oid2->len); j++) {
-        if (oid1->values[j] > oid2->values[j]) {
+    oid_item_t* oi1 = oid1->first_ptr;
+    oid_item_t* oi2 = oid2->first_ptr;
+    while (oi1 && oi2) {
+        if (oi1->value > oi2->value) {
             return 1;
-        } else if (oid1->values[j] < oid2->values[j]) {
+        } else if (oi1->value < oi2->value) {
             return -1;
         }
+        oi1 = oi1->next_ptr;
+        oi2 = oi2->next_ptr;
     }
     return 0;
 }
@@ -66,4 +70,90 @@ varbind_t* varbind_list_append(varbind_t* ptr)
         ptr->next_ptr = new_el_ptr;
     }
     return new_el_ptr;
+}
+
+oid_item_t* oid_item_list_append(oid_item_t* ptr, OID_T value)
+{
+    oid_item_t* new_el_ptr = malloc(sizeof(oid_item_t));
+    if (!new_el_ptr) return 0;
+    new_el_ptr->next_ptr = 0;
+    new_el_ptr->value = value;
+    if (ptr) {
+        ptr->next_ptr = new_el_ptr;
+    }
+    return new_el_ptr;
+}
+
+oid_item_t* oid_item_list_reverse(oid_item_t* ptr)
+{
+    oid_item_t* next_ptr, *cur_ptr;
+    cur_ptr = ptr->next_ptr;
+    ptr->next_ptr = 0;
+    
+    while (cur_ptr) {
+        next_ptr = cur_ptr->next_ptr;
+        cur_ptr->next_ptr = ptr;
+        ptr = cur_ptr;
+        cur_ptr = next_ptr;
+    }
+    return ptr;
+}
+
+
+void oid_item_list_free(oid_item_t* ptr)
+{
+    while (ptr) {
+        oid_item_t* next = ptr->next_ptr;
+        free(ptr);
+        ptr = next;
+    }
+}
+
+oid_t* oid_create()
+{
+    oid_t* new_el_ptr = malloc(sizeof(oid_t));
+    if (!new_el_ptr) return 0;
+    new_el_ptr->first_ptr = 0;
+    new_el_ptr->len = 0;
+    return new_el_ptr;
+}
+
+void oid_free(oid_t* ptr)
+{
+    if (ptr) {
+        oid_item_list_free(ptr->first_ptr);
+        free(ptr);
+    }
+}
+
+oid_t* oid_copy(oid_t* oid_ptr, oid_item_t** last_oid_item)
+{
+    oid_t* ret = oid_create();
+    if (!ret) { return 0;}
+    ret->len = oid_ptr->len;
+
+    oid_item_t *cur_ptr = oid_ptr->first_ptr,  *prev_ptr = 0;
+    while (cur_ptr) {
+        if (!ret->first_ptr) {
+            prev_ptr = ret->first_ptr = oid_item_list_append(0, cur_ptr->value);
+        } else {
+            prev_ptr = oid_item_list_append(prev_ptr, cur_ptr->value);
+        }
+        if (!prev_ptr) { return 0;}
+        cur_ptr = cur_ptr->next_ptr;
+    }
+    if (last_oid_item) {
+        *last_oid_item = prev_ptr;
+    }
+    return ret;
+}
+
+u8t oid_length(oid_item_t* ptr)
+{
+    u8t ret = 0;
+    while (ptr) {
+        ret++;
+        ptr = ptr->next_ptr;
+    }
+    return ret;
 }

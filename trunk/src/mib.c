@@ -27,20 +27,23 @@
 #include "utils.h"
 #include "logging.h"
 
-
-static const oid_t oid_system	= { { 1, 3, 6, 1, 2, 1, 1}, 7};
-static const oid_t oid_if	= { { 1, 3, 6, 1, 2, 1, 2}, 7};
-static const oid_t oid_if_table	= { { 1, 3, 6, 1, 2, 1, 2, 2, 1}, 9};
-static const oid_t oid_test	= { { 1, 3, 6, 1, 2, 1, 1234}, 7};
+/* common oid prefixes ending with 0 */
+static const OID_T oid_system[]         = { 1, 3, 6, 1, 2, 1, 1, 0};
+static const OID_T oid_if[]     	= { 1, 3, 6, 1, 2, 1, 2, 0};
+static const OID_T oid_if_table[]	= { 1, 3, 6, 1, 2, 1, 2, 2, 1, 0};
+static const OID_T oid_test[]           = { 1, 3, 6, 1, 2, 1, 1234, 0};
 
 typedef struct mib_object_t mib_object_t;
+
+#define CHECK_PTR(ptr) if (!ptr) { snmp_log("can not allocate memory, line: %d\n", __LINE__); return -1; }
+#define CHECK_PTR_U(ptr) if (!ptr) { snmp_log("can not allocate memory, line: %d\n", __LINE__); return 0; }
 
 /*
  *  Function types to treat tabular structures
  */
-typedef s8t (*get_value_t)(mib_object_t* object, OID_T* oid, u16t len);
-typedef s8t (*get_next_oid_t)(OID_T* oid, u8t len, u16t* res_len);
-typedef s8t (*set_value_t)(mib_object_t* object, OID_T* oid, u16t len, varbind_value_t value);
+typedef s8t (*get_value_t)(mib_object_t* object, oid_item_t* oid_item, u8t len);
+typedef oid_item_t* (*get_next_oid_t)(mib_object_t* object, oid_item_t* oid_item, u8t len);
+typedef s8t (*set_value_t)(mib_object_t* object, oid_item_t* oid_item, u8t len, varbind_value_t value);
 
 typedef struct mib_object_t
 {
@@ -65,7 +68,7 @@ static mib_object_t mib[MIB_LEN];
 static u16t mib_length = 0;
 
 /***************************************************/
-s8t getSysDescr(mib_object_t* object, OID_T* oid, u16t len)
+s8t getSysDescr(mib_object_t* object, oid_item_t* oid_item, u8t len)
 {
     if (!object->varbind.value.s_value.len) {
         object->varbind.value.s_value.ptr = (u8t*)"System Description";
@@ -74,14 +77,14 @@ s8t getSysDescr(mib_object_t* object, OID_T* oid, u16t len)
     return 0;
 }
 
-s8t setSysDescr(mib_object_t* object, OID_T* oid, u16t len, varbind_value_t value)
+s8t setSysDescr(mib_object_t* object, oid_item_t* oid_item, u8t len, varbind_value_t value)
 {
     object->varbind.value.s_value.ptr = (u8t*)"System Description2";
     object->varbind.value.s_value.len = 19;
     return 0;
 }
 
-s8t getTimeTicks(mib_object_t* object, OID_T* oid, u16t len)
+s8t getTimeTicks(mib_object_t* object, oid_item_t* oid_item, u8t len)
 {
     object->varbind.value.u_value = 1234;
     return 0;
@@ -91,7 +94,7 @@ s8t getTimeTicks(mib_object_t* object, OID_T* oid, u16t len)
 
 #define ifNumber 3
 
-s8t getIfNumber(mib_object_t* object, OID_T* oid, u16t len)
+s8t getIfNumber(mib_object_t* object, oid_item_t* oid_item, u8t len)
 {
     object->varbind.value.i_value = ifNumber;
     return 0;
@@ -99,16 +102,18 @@ s8t getIfNumber(mib_object_t* object, OID_T* oid, u16t len)
 
 #define ifIndex 1
 
-s8t getIf(mib_object_t* object, OID_T* oid, u16t len)
+s8t getIf(mib_object_t* object, oid_item_t* oid_item, u8t len)
 {
+    snmp_log("get\n");
     if (len != 2) {
         return -1;
     }
-    switch (oid[0]) {
+    switch (oid_item->value) {
         case ifIndex:
             object->varbind.value_type = BER_TYPE_INTEGER;
-            if (0 < oid[1] && oid[1] <= ifNumber) {
-                object->varbind.value.i_value = oid[1];
+            if (0 < oid_item->next_ptr->value && oid_item->next_ptr->value <= ifNumber) {
+                snmp_log("%d %d get2\n", oid_item->next_ptr->value);
+                object->varbind.value.i_value = oid_item->next_ptr->value;
             } else {
                 return -1;
             }
@@ -119,34 +124,80 @@ s8t getIf(mib_object_t* object, OID_T* oid, u16t len)
     return 0;
 }
 
-s8t getNextIfOid(OID_T* oid, u8t len, u16t* res_len)
+oid_item_t* getNextIfOid(mib_object_t* object, oid_item_t* oid_item, u8t len)
 {
-    OID_T oid_el1 = (len > 0 ? oid[0] : 0);
-    OID_T oid_el2 = (len > 1 ? oid[1] : 0);
+    OID_T oid_el1 = (len > 0 ? oid_item->value : 0);
+    OID_T oid_el2 = (len > 1 ? oid_item->next_ptr->value : 0);
 
+    oid_item_t* ret, *ptr;
     if (oid_el1 < ifIndex) {
-        *res_len = 2;
-        oid[0] = ifIndex;
-        oid[1] = 1;
-        return 0;
+        ret = oid_item_list_append(0, ifIndex);
+        CHECK_PTR_U(ret);
+        ptr = oid_item_list_append(ret, 1);
+        CHECK_PTR_U(ptr);
+        return ret;
     }
     
     if (oid_el1 == ifIndex && oid_el2 < ifNumber) {
-        *res_len = 2;
-        oid[0] = ifIndex;
-        oid[1] = oid_el2 + 1;
-        return 0;
+        ret = oid_item_list_append(0, ifIndex);
+        CHECK_PTR_U(ret);
+        ptr = oid_item_list_append(ret, oid_el2 + 1);
+        CHECK_PTR_U(ptr);
+        return ret;
     }
-    return -1;
+    return 0;
 }
 
 /***************************************************/
 
 /*-----------------------------------------------------------------------------------*/
 /*
- * Adds a scalar to the MIB
+ * Create an OID based on the prefix.
  */
-s8t add_scalar(const oid_t* prefix, const OID_T object_id, u8t value_type, const void* const value, get_value_t gfp, set_value_t svfp)
+static oid_t* create_oid(const OID_T* const prefix, oid_item_t** last_ptr)
+{
+    oid_t* oid = oid_create();
+    if (!oid) {
+        return 0;
+    }
+    const OID_T* cur = prefix;
+    oid_item_t* oid_item_ptr = 0;
+    while (*cur) {
+        if (!oid->first_ptr) {
+            oid_item_ptr = oid->first_ptr = oid_item_list_append(0, *cur);
+        } else {
+            oid_item_ptr = oid_item_list_append(oid_item_ptr, *cur);
+        }
+        if (!oid_item_ptr) {
+            return 0;
+        }
+        cur = cur + 1;
+        oid->len++;
+    }
+    if (last_ptr) {
+        *last_ptr = oid_item_ptr;
+    }
+    return oid;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Find the element number N in the list.
+ */
+static oid_item_t* element_n(oid_item_t* first_ptr, u8t n)
+{
+    while (n > 0 && first_ptr) {
+        first_ptr = first_ptr->next_ptr;
+        n--;
+    }
+    return first_ptr;
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
+ * Adds a scalar to the MIB.
+ */
+s8t add_scalar(const OID_T* const prefix, const OID_T object_id, u8t value_type, const void* const value, get_value_t gfp, set_value_t svfp)
 {
     /* MIB is full */
     if (mib_length >= MIB_LEN) {
@@ -192,10 +243,15 @@ s8t add_scalar(const oid_t* prefix, const OID_T object_id, u8t value_type, const
         }
     }
     /* construct OID */
-    memcpy(mib[mib_length].varbind.oid.values, prefix->values, prefix->len * sizeof(OID_T));
-    mib[mib_length].varbind.oid.values[prefix->len] = object_id;
-    mib[mib_length].varbind.oid.values[prefix->len + 1] = 0;
-    mib[mib_length].varbind.oid.len = prefix->len + 2;
+    oid_item_t *item_ptr1, *item_ptr2;
+    oid_t* oid_ptr = create_oid(prefix, &item_ptr1);
+
+    item_ptr1 = oid_item_list_append(item_ptr1, object_id);
+    item_ptr2 = oid_item_list_append(item_ptr1, 0);
+    CHECK_PTR(oid_ptr && !item_ptr1 && !item_ptr2);
+    oid_ptr->len += 2;
+    
+    mib[mib_length].varbind.oid_ptr = oid_ptr;
 
     /* set value type */
     mib[mib_length].varbind.value_type = value_type;
@@ -208,7 +264,7 @@ s8t add_scalar(const oid_t* prefix, const OID_T object_id, u8t value_type, const
 /*
  * Adds a table to the MIB.
  */
-s8t add_table(const oid_t* prefix, get_value_t  gfp, get_next_oid_t gnofp, set_value_t svfp)
+s8t add_table(const OID_T* const prefix, get_value_t  gfp, get_next_oid_t gnofp, set_value_t svfp)
 {
     /* MIB is full */
     if (mib_length >= MIB_LEN) {
@@ -216,8 +272,10 @@ s8t add_table(const oid_t* prefix, get_value_t  gfp, get_next_oid_t gnofp, set_v
         return -1;
     }
     /* copy the oid prefix */
-    memcpy(mib[mib_length].varbind.oid.values, prefix->values, prefix->len * sizeof(OID_T));
-    mib[mib_length].varbind.oid.len = prefix->len;
+    oid_t* oid_ptr = create_oid(prefix, 0);
+    CHECK_PTR(oid_ptr);
+    
+    mib[mib_length].varbind.oid_ptr = oid_ptr;
 
     /* set getter functions */
     mib[mib_length].get_fnc_ptr = gfp;
@@ -242,24 +300,23 @@ s8t mib_get(varbind_t* req)
     static u8t i;
     for (i = 0; i < mib_length; i++) {
         // scalar
-        if (mib[i].varbind.oid.len == req->oid.len &&
-                !memcmp(mib[i].varbind.oid.values, req->oid.values,
-                mib[i].varbind.oid.len * sizeof(OID_T))) {
+        if (mib[i].varbind.oid_ptr->len == req->oid_ptr->len &&
+                !oid_cmp(mib[i].varbind.oid_ptr, req->oid_ptr)) {
             break;
-        } else if (mib[i].get_next_oid_fnc_ptr && mib[i].varbind.oid.len == req->oid.len &&
-                !memcmp(mib[i].varbind.oid.values, req->oid.values, mib[i].varbind.oid.len * sizeof(OID_T))) {
+        } else if (mib[i].get_next_oid_fnc_ptr && mib[i].varbind.oid_ptr->len < req->oid_ptr->len &&
+                !oid_cmp(mib[i].varbind.oid_ptr, req->oid_ptr)) {
             // tabular
             break;
         }
-
     }
+
     if (i == mib_length) {
         snmp_log("mib object not found\n");
         return -1;
     }
 
     if (mib[i].get_fnc_ptr) {
-        if ((mib[i].get_fnc_ptr)(&mib[i], &req->oid.values[mib[i].varbind.oid.len], req->oid.len - mib[i].varbind.oid.len) == -1) {
+        if ((mib[i].get_fnc_ptr)(&mib[i], element_n(req->oid_ptr->first_ptr, mib[i].varbind.oid_ptr->len), req->oid_ptr->len - mib[i].varbind.oid_ptr->len) == -1) {
             snmp_log("can not get the value of the object\n");
             return -1;
         }
@@ -281,36 +338,49 @@ s8t mib_get_next(varbind_t* req)
     static s8t cmp;
     for (i = 0; i < mib_length; i++) {
         // find the object
-        cmp = oid_cmp(&req->oid, &mib[i].varbind.oid);
+        cmp = oid_cmp(req->oid_ptr, mib[i].varbind.oid_ptr);
 
         if (!mib[i].get_next_oid_fnc_ptr) {
             // handle scalar object
-            if (cmp == -1 || (cmp == 0 && req->oid.len < mib[i].varbind.oid.len)) {
-                /* copy the oid */
-                memcpy(req->oid.values, mib[i].varbind.oid.values, mib[i].varbind.oid.len * sizeof(OID_T));
-                req->oid.len = mib[i].varbind.oid.len;
+            if (cmp == -1 || (cmp == 0 && req->oid_ptr->len < mib[i].varbind.oid_ptr->len)) {
+                /* free the request oid list */
+                oid_free(req->oid_ptr);
+                req->oid_ptr = oid_copy(mib[i].varbind.oid_ptr, 0);
+                CHECK_PTR(req->oid_ptr);
                 break;
             }
         } else {
             /* handle tabular object */
             if (cmp == -1 || cmp == 0) {
                 /* oid of the first element */
-                if ((mib[i].get_next_oid_fnc_ptr)(&req->oid.values[mib[i].varbind.oid.len],
-                        (req->oid.len < mib[i].varbind.oid.len ? 0 : req->oid.len - mib[i].varbind.oid.len), &req->oid.len) != -1) {
-                    memcpy(req->oid.values, mib[i].varbind.oid.values, mib[i].varbind.oid.len * sizeof(OID_T));
-                    req->oid.len += mib[i].varbind.oid.len;
-                    break;
+                oid_item_t* tail_ptr;
+                if ((tail_ptr = (mib[i].get_next_oid_fnc_ptr)(&mib[i], (cmp == -1 ? 0 : element_n(req->oid_ptr->first_ptr, mib[i].varbind.oid_ptr->len)),
+                        cmp == -1 ? 0 : req->oid_ptr->len - mib[i].varbind.oid_ptr->len)) != 0) {
+                    /* copy the mib object's oid */
+                    oid_item_t* last_ptr;
+                    oid_t* new_oid_ptr = oid_copy(mib[i].varbind.oid_ptr, &last_ptr);
+                    CHECK_PTR(new_oid_ptr);
+                    /* attach the tail */
+                    last_ptr->next_ptr = tail_ptr;
+                    new_oid_ptr->len += oid_length(tail_ptr);
+                    /* free the previos oid */
+                    oid_free(req->oid_ptr);
+                    /* set the new one */
+                    req->oid_ptr = new_oid_ptr;
+                    break;                    
                 }
             }
         }
     }
+
     if (i == mib_length) {
         snmp_log("mib does not contain next object\n");
         return -1;
     }
-    
+
     if (mib[i].get_fnc_ptr) {
-        if ((mib[i].get_fnc_ptr)(&mib[i], &req->oid.values[mib[i].varbind.oid.len], req->oid.len - mib[i].varbind.oid.len) == -1) {
+        if ((mib[i].get_fnc_ptr)(&mib[i], element_n(req->oid_ptr->first_ptr, mib[i].varbind.oid_ptr->len),
+                                    req->oid_ptr->len - mib[i].varbind.oid_ptr->len) == -1) {
             snmp_log("can not get the value of the object\n");
             return -1;
         }
@@ -330,8 +400,8 @@ s8t mib_set(u8t index, varbind_t* req)
 {
     if (mib[index].set_fnc_ptr) {
         if ((mib[index].set_fnc_ptr)(&mib[index], 
-                &req->oid.values[mib[index].varbind.oid.len],
-                req->oid.len - mib[index].varbind.oid.len, req->value) == -1) {
+                element_n(req->oid_ptr->first_ptr, mib[index].varbind.oid_ptr->len),
+                req->oid_ptr->len - mib[index].varbind.oid_ptr->len, req->value) == -1) {
             snmp_log("can not set the value of the object\n");
             return -1;
         }
@@ -379,23 +449,23 @@ s8t mib_set(u8t index, varbind_t* req)
 s8t mib_init()
 {
     const u32t tconst = 12345678;
-    if (add_scalar(&oid_system, 1, BER_TYPE_OCTET_STRING, 0, &getSysDescr, &setSysDescr) == -1 ||
-        add_scalar(&oid_system, 3, BER_TYPE_TIME_TICKS, 0, &getTimeTicks, 0) == -1  ||
-        add_scalar(&oid_system, 11, BER_TYPE_OCTET_STRING, "Pointer to a string", 0, 0) == -1 ||
-        add_scalar(&oid_system, 13, BER_TYPE_TIME_TICKS, &tconst, 0, 0) == -1) {
+    if (add_scalar(oid_system, 1, BER_TYPE_OCTET_STRING, 0, &getSysDescr, &setSysDescr) == -1 ||
+        add_scalar(oid_system, 3, BER_TYPE_TIME_TICKS, 0, &getTimeTicks, 0) == -1  ||
+        add_scalar(oid_system, 11, BER_TYPE_OCTET_STRING, "Pointer to a string", 0, 0) == -1 ||
+        add_scalar(oid_system, 13, BER_TYPE_TIME_TICKS, &tconst, 0, 0) == -1) {
         return -1;
     }
 
-    if (add_scalar(&oid_if, 1, BER_TYPE_INTEGER, 0, &getIfNumber, 0) == -1) {
+    if (add_scalar(oid_if, 1, BER_TYPE_INTEGER, 0, &getIfNumber, 0) == -1) {
         return -1;
     }
 
-    if (add_table(&oid_if_table, &getIf, &getNextIfOid, 0) == -1) {
+    if (add_table(oid_if_table, &getIf, &getNextIfOid, 0) == -1) {
         return -1;
     }
 
-    if (add_scalar(&oid_test, 1, BER_TYPE_INTEGER, 0, 0, 0) == -1 ||
-       add_scalar(&oid_test, 2, BER_TYPE_GAUGE, 0, 0, 0) == -1) {
+    if (add_scalar(oid_test, 1, BER_TYPE_INTEGER, 0, 0, 0) == -1 ||
+       add_scalar(oid_test, 2, BER_TYPE_GAUGE, 0, 0, 0) == -1) {
         return -1;
     }
 
