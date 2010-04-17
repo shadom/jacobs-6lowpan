@@ -132,19 +132,16 @@ void free_message(message_t* message) {
     }
 
     /* free memory for string values */
-    if (message->pdu.request_type == BER_TYPE_SNMP_SET) {
-        varbind_t* ptr = message->pdu.varbind_first_ptr;
-        while (ptr) {
-            if (ptr->value_type == BER_TYPE_OCTET_STRING &&
-                    ptr->value.s_value.ptr) {
-                free(ptr->value.s_value.ptr);
-            }
-            oid_free(ptr->oid_ptr);
-            varbind_t* next_ptr = ptr->next_ptr;
-            free(ptr);
-            ptr = next_ptr;
+    varbind_t* ptr = message->pdu.varbind_first_ptr;
+    while (ptr) {
+        if (message->pdu.request_type == BER_TYPE_SNMP_SET &&
+                ptr->value_type == BER_TYPE_OCTET_STRING && ptr->value.s_value.ptr) {
+            free(ptr->value.s_value.ptr);
         }
-
+        oid_free(ptr->oid_ptr);
+        varbind_t* next_ptr = ptr->next_ptr;
+        free(ptr);
+        ptr = next_ptr;
     }
 }
 
@@ -156,7 +153,6 @@ s8t snmp_handler(const u8t* const input,  const u16t input_len, u8t* output, u16
 {
     static message_t message;
     memset(&message, 0, sizeof(message_t));
-    
     /* parse the incoming datagram and build an ASN.1 object */
     s8t ret = ber_decode_request(input, input_len, &message);
     if (ret == -1) {
@@ -164,6 +160,7 @@ s8t snmp_handler(const u8t* const input,  const u16t input_len, u8t* output, u16
         free_message(&message);
         return -1;
     } else if (ret == ERR_MEMORY_ALLOCATION) {
+        snmp_info("here!!!");
         message.pdu.error_status = ERROR_STATUS_GEN_ERR;
     }
 
