@@ -139,6 +139,7 @@ void free_message(message_t* message) {
                     ptr->value.s_value.ptr) {
                 free(ptr->value.s_value.ptr);
             }
+            oid_free(ptr->oid_ptr);
             varbind_t* next_ptr = ptr->next_ptr;
             free(ptr);
             ptr = next_ptr;

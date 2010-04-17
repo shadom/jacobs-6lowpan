@@ -36,10 +36,16 @@
 #define SNMP_VERSION_1					0
 #define SNMP_VERSION_2C					1
 
+/** \brief OID item. */
+typedef struct oid_item_t {
+    OID_T               value;
+    struct oid_item_t*  next_ptr;
+} oid_item_t;
+
 /** \brief OID. */
-typedef struct {
-    OID_T   values[OID_LEN];
-    u16t    len;
+typedef struct oid_t {
+    struct oid_item_t* first_ptr;
+    u8t                len;
 } oid_t;
 
 /** \brief Value of the variable binding. */
@@ -54,7 +60,7 @@ typedef union {
 
 /** \brief Variable binding. */
 typedef struct varbind_t {
-    oid_t               oid;
+    oid_t*              oid_ptr;
     u8t                 value_type;
     varbind_value_t     value;
     struct varbind_t*   next_ptr;

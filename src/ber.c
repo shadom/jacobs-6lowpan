@@ -32,6 +32,8 @@
 
 #define TRY(c) if (c < 0) { snmp_log("exception line: %d\n", __LINE__); return c; }
 
+#define CHECK_PTR(ptr) if (!ptr) { snmp_log("can not allocate memory, line: %d\n", __LINE__); return ERR_MEMORY_ALLOCATION; }
+
 /** \brief ber encoded value. */
 typedef struct {
     u8t* buffer;
@@ -226,10 +228,7 @@ s8t ber_decode_string(const u8t* const input, const u16t len, u16t* pos, u8t** v
     }
     if (*pos + *field_len - 1 < len) {
         *value = (u8t*)malloc(*field_len + 1);
-        if (*value == NULL) {
-            snmp_log("memory can't be allocated for a string\n");
-            return ERR_MEMORY_ALLOCATION;
-        }
+        CHECK_PTR(*value);
         memcpy(*value, &input[*pos], *field_len);
         (*value)[*field_len] = 0;
         *pos = *pos + *field_len;
@@ -253,14 +252,16 @@ s8t ber_decode_oid(const u8t* const input, const u16t len, u16t* pos, oid_t* o)
     }
 
     if (*pos - 1 < len) {
-        o->len = 0;
+        oid_item_t *cur_ptr, *prev_ptr;
         /* The first element after the length contains two OID values.
          * The first value can be obtained by dividing this element by 40.
          * The second data element can be obtained by taking the remainder from the previous division.
          */
         if (!(input[*pos] & 0x80)) {
-            o->values[o->len++] = input[*pos] / 40;
-            o->values[o->len++] = input[*pos] % 40;
+            o->first_ptr = oid_item_list_append(0, input[*pos] / 40);
+            CHECK_PTR(o->first_ptr);
+            prev_ptr = oid_item_list_append(o->first_ptr, input[*pos] % 40);
+            o->len = 2;
             *pos = *pos + 1;
             (s_length)--;
         } else {
@@ -269,17 +270,13 @@ s8t ber_decode_oid(const u8t* const input, const u16t len, u16t* pos, oid_t* o)
         }
 
         while (s_length) {
-            if (o->len < OID_LEN) {
-                o->values[o->len] = 0;
-            } else {
-                snmp_log("oid contains too many elements (max=%d)\n", OID_LEN);
-                return -1;
-            }
+            cur_ptr = oid_item_list_append(prev_ptr, 0);
+            o->len++;
             while ((s_length)--) {
                 /* Check bit 8 to see of there are more octets that make up this element of the OID.
                  * If bit 8 is set, then multiply the octet by 128 and then add the lower bits to the result.
                  */
-                o->values[o->len] = (o->values[o->len] << 7) + (input[*pos] & 0x7F);
+                cur_ptr->value = (cur_ptr->value << 7) + (input[*pos] & 0x7F);
                 if (input[*pos] & 0x80) {
                     if ((s_length) == 0) {
                         snmp_log("can't fetch an oid: unexpected end of the SNMP input\n");
@@ -291,7 +288,7 @@ s8t ber_decode_oid(const u8t* const input, const u16t len, u16t* pos, oid_t* o)
                     break;
                 }
             }
-            o->len++;
+            prev_ptr = cur_ptr;
         }
     } else {
         snmp_log("can't fetch an oid: unexpected end of the SNMP request\n");
@@ -411,7 +408,8 @@ s8t ber_decode_pdu(const u8t* const input, const u16t len, u16t* pos, pdu_t* pdu
         }
         
         /* OID */
-        TRY(ber_decode_oid(input, len, pos, &cur_ptr->oid));
+        cur_ptr->oid_ptr = oid_create();
+        TRY(ber_decode_oid(input, len, pos, cur_ptr->oid_ptr));
 
         /* void value */
         TRY(ber_decode_value(input, len, pos, &cur_ptr->value_type, &cur_ptr->value));
@@ -504,24 +502,25 @@ s8t ber_encode_type_length(u8t* output, s16t* pos, u8t type, u16t len)
 /*
  * Write a BER encoded oid to the buffer
  */
-s8t ber_encode_oid(u8t* output, s16t* pos, const oid_t* const  oid)
+s8t ber_encode_oid(u8t* output, s16t* pos, oid_t* const  oid)
 {
     static u8t length;
     static u8t i;
     static s8t j;
     static u16t oid_length;
-
+    /* reverse order, since we encode from the end */
+    oid->first_ptr = oid_item_list_reverse(oid->first_ptr);
     oid_length = 1;
-
+    oid_item_t *cur_ptr = oid->first_ptr;
     /* encode oids from the last to the 2nd */
-    for (i = oid->len - 1; i >= 2; i--) {
-        if (oid->values[i] >= (268435456)) { // 2 ^ 28
+    for (i = oid->len; i > 2; i--) {
+        if (cur_ptr->value >= (268435456)) { // 2 ^ 28
             length = 5;
-        } else if (oid->values[i] >= (2097152)) { // 2 ^ 21
+        } else if (cur_ptr->value >= (2097152)) { // 2 ^ 21
             length = 4;
-        } else if (oid->values[i] >= 16384) { // 2 ^ 14
+        } else if (cur_ptr->value >= 16384) { // 2 ^ 14
             length = 3;
-        } else if (oid->values[i] >= 128) { // 2 ^ 7
+        } else if (cur_ptr->value >= 128) { // 2 ^ 7
             length = 2;
         } else {
             length = 1;
@@ -530,15 +529,16 @@ s8t ber_encode_oid(u8t* output, s16t* pos, const oid_t* const  oid)
         DECN(pos,  length);
         for (j = length - 1; j >= 0; j--) {
             if (j) {
-                output[*pos + length - j - 1] = ((oid->values[i] >> (7 * j)) & 0x7F) | 0x80;
+                output[*pos + length - j - 1] = ((cur_ptr->value >> (7 * j)) & 0x7F) | 0x80;
             } else {
-                output[*pos + length - j - 1] = ((oid->values[i] >> (7 * j)) & 0x7F);
+                output[*pos + length - j - 1] = ((cur_ptr->value >> (7 * j)) & 0x7F);
             }
         }
+        cur_ptr = cur_ptr->next_ptr;
     }
     /* the value of the first 2 oid elements are enconded in the first byte as = 40 * 1st + 2nd */
     DEC(pos);
-    output[*pos] = oid->values[0] * 40 + oid->values[1];
+    output[*pos] = cur_ptr->next_ptr->value * 40 + cur_ptr->value;
 
     /* type and length */
     TRY(ber_encode_type_length(output, pos, BER_TYPE_OID, oid_length));
@@ -674,13 +674,12 @@ s8t ber_encode_var_bind(u8t* output, s16t* pos, const varbind_t* const varbind)
         default:
             break;
     }
-    
     /* oid */
-    TRY(ber_encode_oid(output, pos, &varbind->oid));
+    TRY(ber_encode_oid(output, pos, varbind->oid_ptr));
+
     /* sequence header*/
     len_pos -= *pos;
     TRY(ber_encode_type_length(output, pos, BER_TYPE_SEQUENCE, len_pos));
-
     return 0;
 }
 

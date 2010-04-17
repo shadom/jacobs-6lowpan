@@ -34,7 +34,7 @@
 #define min(a,b) ((a>b) ? b : a)
 #define max(a,b) ((a>b) ? a : b)
 
-s8t oid_cmp(oid_t*  oid1, oid_t* oid2);
+s8t oid_cmp(oid_t* oid1, oid_t* oid2);
 
 typedef struct u8t_list_t
 {
@@ -47,6 +47,20 @@ u8t_list_t* u8t_list_append(u8t_list_t* ptr, u8t value);
 void u8t_list_free(u8t_list_t* ptr);
 
 varbind_t* varbind_list_append(varbind_t* ptr);
+
+oid_item_t* oid_item_list_append(oid_item_t* ptr, OID_T value);
+
+oid_item_t* oid_item_list_reverse(oid_item_t* ptr);
+
+void oid_item_list_free(oid_item_t* ptr);
+
+oid_t* oid_create();
+
+void oid_free(oid_t* ptr);
+
+oid_t* oid_copy(oid_t* oid_ptr, oid_item_t** last_oid_item);
+
+u8t oid_length(oid_item_t* ptr);
 
 #endif	/* __SNMPD_UTILS_H__ */
 

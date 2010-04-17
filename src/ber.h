@@ -102,7 +102,7 @@ s8t ber_encode_unsigned_integer(u8t* output, s16t* pos, const u8t type, const u3
 
 s8t ber_encode_string(u8t* output, s16t* pos, const u8t* const str_value);
 
-s8t ber_encode_oid(u8t* output, s16t* pos, const oid_t* const oid);
+s8t ber_encode_oid(u8t* output, s16t* pos, oid_t* const oid);
 
 s8t ber_encode_var_bind(u8t* output, s16t* pos, const varbind_t* const varbind);
 
