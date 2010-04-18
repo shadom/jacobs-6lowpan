@@ -39,9 +39,13 @@ s8t oid_cmp(oid_t*  oid1, oid_t* oid2) {
     return 0;
 }
 
-u8t_list_t* u8t_list_append(u8t_list_t* ptr, u8t value)
+/*---------------------------------------------------------*/
+/*
+ *  u8t list functions.
+ */
+mib_object_list_t* mib_object_list_append(mib_object_list_t* ptr, mib_object_t* value)
 {
-    u8t_list_t* new_el_ptr = malloc(sizeof(u8t_list_t));
+    mib_object_list_t* new_el_ptr = malloc(sizeof(mib_object_list_t));
     if (!new_el_ptr) return 0;
 
     new_el_ptr->next_ptr = 0;
@@ -52,15 +56,19 @@ u8t_list_t* u8t_list_append(u8t_list_t* ptr, u8t value)
     return new_el_ptr;
 }
 
-void u8t_list_free(u8t_list_t* ptr)
+void mib_object_list_free(mib_object_list_t* ptr)
 {
     while (ptr) {
-        u8t_list_t* next = ptr->next_ptr;
+        mib_object_list_t* next = ptr->next_ptr;
         free(ptr);
         ptr = next;
     }
 }
 
+/*---------------------------------------------------------*/
+/*
+ *  Variable binding list functions.
+ */
 varbind_t* varbind_list_append(varbind_t* ptr)
 {
     varbind_t* new_el_ptr = malloc(sizeof(varbind_t));
@@ -72,6 +80,11 @@ varbind_t* varbind_list_append(varbind_t* ptr)
     return new_el_ptr;
 }
 
+
+/*---------------------------------------------------------*/
+/*
+ *  OID item list functions.
+ */
 oid_item_t* oid_item_list_append(oid_item_t* ptr, OID_T value)
 {
     oid_item_t* new_el_ptr = malloc(sizeof(oid_item_t));
@@ -109,6 +122,10 @@ void oid_item_list_free(oid_item_t* ptr)
     }
 }
 
+/*---------------------------------------------------------*/
+/*
+ *  OID functions.
+ */
 oid_t* oid_create()
 {
     oid_t* new_el_ptr = malloc(sizeof(oid_t));
@@ -156,4 +173,16 @@ u8t oid_length(oid_item_t* ptr)
         ptr = ptr->next_ptr;
     }
     return ret;
+}
+
+/*---------------------------------------------------------*/
+/*
+ *  MIB object list functions.
+ */
+mib_object_t* mib_object_create()
+{
+    mib_object_t* new_el_ptr = malloc(sizeof(mib_object_t));
+    if (!new_el_ptr) return 0;
+    new_el_ptr->next_ptr = 0;
+    return new_el_ptr;
 }
