@@ -33,39 +33,10 @@ static const OID_T oid_if[]     	= { 1, 3, 6, 1, 2, 1, 2, 0};
 static const OID_T oid_if_table[]	= { 1, 3, 6, 1, 2, 1, 2, 2, 1, 0};
 static const OID_T oid_test[]           = { 1, 3, 6, 1, 2, 1, 1234, 0};
 
-typedef struct mib_object_t mib_object_t;
-
 #define CHECK_PTR(ptr) if (!ptr) { snmp_log("can not allocate memory, line: %d\n", __LINE__); return -1; }
 #define CHECK_PTR_U(ptr) if (!ptr) { snmp_log("can not allocate memory, line: %d\n", __LINE__); return 0; }
 
-/*
- *  Function types to treat tabular structures
- */
-typedef s8t (*get_value_t)(mib_object_t* object, oid_item_t* oid_item, u8t len);
-typedef oid_item_t* (*get_next_oid_t)(mib_object_t* object, oid_item_t* oid_item, u8t len);
-typedef s8t (*set_value_t)(mib_object_t* object, oid_item_t* oid_item, u8t len, varbind_value_t value);
-
-typedef struct mib_object_t
-{
-    varbind_t varbind;
-    
-    /* A pointer to the get value function.
-     */
-    get_value_t get_fnc_ptr;
-    
-    /* A pointer to the get next oid function.
-     * If set then the object is tabular.
-     */
-    get_next_oid_t get_next_oid_fnc_ptr;
-
-    /* A pointer to the get value function.
-     */
-    set_value_t set_fnc_ptr;
-
-} mib_object_type;
-
-static mib_object_t mib[MIB_LEN];
-static u16t mib_length = 0;
+static mib_object_t *mib_head = 0, *mib_tail = 0;
 
 /***************************************************/
 s8t getSysDescr(mib_object_t* object, oid_item_t* oid_item, u8t len)
@@ -104,7 +75,6 @@ s8t getIfNumber(mib_object_t* object, oid_item_t* oid_item, u8t len)
 
 s8t getIf(mib_object_t* object, oid_item_t* oid_item, u8t len)
 {
-    snmp_log("get\n");
     if (len != 2) {
         return -1;
     }
@@ -112,7 +82,6 @@ s8t getIf(mib_object_t* object, oid_item_t* oid_item, u8t len)
         case ifIndex:
             object->varbind.value_type = BER_TYPE_INTEGER;
             if (0 < oid_item->next_ptr->value && oid_item->next_ptr->value <= ifNumber) {
-                snmp_log("%d %d get2\n", oid_item->next_ptr->value);
                 object->varbind.value.i_value = oid_item->next_ptr->value;
             } else {
                 return -1;
@@ -154,12 +123,11 @@ oid_item_t* getNextIfOid(mib_object_t* object, oid_item_t* oid_item, u8t len)
 /*
  * Create an OID based on the prefix.
  */
-static oid_t* create_oid(const OID_T* const prefix, oid_item_t** last_ptr)
+static oid_t* create_oid_by_prefix(const OID_T* const prefix, oid_item_t** last_ptr)
 {
     oid_t* oid = oid_create();
-    if (!oid) {
-        return 0;
-    }
+    CHECK_PTR_U(oid);
+    
     const OID_T* cur = prefix;
     oid_item_t* oid_item_ptr = 0;
     while (*cur) {
@@ -195,42 +163,56 @@ static oid_item_t* element_n(oid_item_t* first_ptr, u8t n)
 
 /*-----------------------------------------------------------------------------------*/
 /*
+ * Adds an object to the MIB.
+ * TODO: sort while adding an object 
+ */
+void mib_add(mib_object_t* object) {
+    if (!mib_head) {
+        mib_head = object;
+        mib_tail = object;
+        object->next_ptr = 0;
+    } else {
+        mib_tail->next_ptr = object;
+        object->next_ptr = 0;
+        mib_tail = object;
+    }
+}
+
+/*-----------------------------------------------------------------------------------*/
+/*
  * Adds a scalar to the MIB.
  */
 s8t add_scalar(const OID_T* const prefix, const OID_T object_id, u8t value_type, const void* const value, get_value_t gfp, set_value_t svfp)
 {
-    /* MIB is full */
-    if (mib_length >= MIB_LEN) {
-        snmp_log("can't add a new entry to the mib - it's is already full");
-        return -1;
-    }
+    mib_object_t* object = mib_object_create();
+    CHECK_PTR(object);
     /* set oid functions */
-    mib[mib_length].get_fnc_ptr = gfp;
-    mib[mib_length].set_fnc_ptr = svfp;
-    mib[mib_length].get_next_oid_fnc_ptr = 0;
+    object->get_fnc_ptr = gfp;
+    object->set_fnc_ptr = svfp;
+    object->get_next_oid_fnc_ptr = 0;
 
     /* set initial value if it's not NULL */
     if (value) {
         switch (value_type) {
             case BER_TYPE_IPADDRESS:
             case BER_TYPE_OCTET_STRING:
-                mib[mib_length].varbind.value.s_value.len = strlen((char*)value);
-                mib[mib_length].varbind.value.s_value.ptr = (u8t*)malloc(mib[mib_length].varbind.value.s_value.len);
-                if (!mib[mib_length].varbind.value.s_value.ptr) {
+                object->varbind.value.s_value.len = strlen((char*)value);
+                object->varbind.value.s_value.ptr = (u8t*)malloc(object->varbind.value.s_value.len);
+                if (!object->varbind.value.s_value.ptr) {
                     snmp_log("can not allocate memory for a string\n");
                     return -1;
                 }
-                memcpy(mib[mib_length].varbind.value.s_value.ptr, value, mib[mib_length].varbind.value.s_value.len);
+                memcpy(object->varbind.value.s_value.ptr, value, object->varbind.value.s_value.len);
                 break;
 
             case BER_TYPE_INTEGER:
-                mib[mib_length].varbind.value.i_value = *((s32t*)value);
+                object->varbind.value.i_value = *((s32t*)value);
                 break;
 
             case BER_TYPE_COUNTER:
             case BER_TYPE_TIME_TICKS:
             case BER_TYPE_GAUGE:
-                mib[mib_length].varbind.value.u_value = *((u32t*)value);
+                object->varbind.value.u_value = *((u32t*)value);
                 break;
 
             case BER_TYPE_OPAQUE:
@@ -244,19 +226,20 @@ s8t add_scalar(const OID_T* const prefix, const OID_T object_id, u8t value_type,
     }
     /* construct OID */
     oid_item_t *item_ptr1, *item_ptr2;
-    oid_t* oid_ptr = create_oid(prefix, &item_ptr1);
+    oid_t* oid_ptr = create_oid_by_prefix(prefix, &item_ptr1);
 
     item_ptr1 = oid_item_list_append(item_ptr1, object_id);
     item_ptr2 = oid_item_list_append(item_ptr1, 0);
     CHECK_PTR(oid_ptr && !item_ptr1 && !item_ptr2);
     oid_ptr->len += 2;
     
-    mib[mib_length].varbind.oid_ptr = oid_ptr;
+    object->varbind.oid_ptr = oid_ptr;
 
     /* set value type */
-    mib[mib_length].varbind.value_type = value_type;
+    object->varbind.value_type = value_type;
 
-    mib_length++;
+    mib_add(object);
+
     return 0;
 }
 
@@ -266,28 +249,26 @@ s8t add_scalar(const OID_T* const prefix, const OID_T object_id, u8t value_type,
  */
 s8t add_table(const OID_T* const prefix, get_value_t  gfp, get_next_oid_t gnofp, set_value_t svfp)
 {
-    /* MIB is full */
-    if (mib_length >= MIB_LEN) {
-        snmp_log("can't add a new entry to the mib - it's is already full");
-        return -1;
-    }
+    mib_object_t* object = mib_object_create();
+    CHECK_PTR(object);
+
     /* copy the oid prefix */
-    oid_t* oid_ptr = create_oid(prefix, 0);
+    oid_t* oid_ptr = create_oid_by_prefix(prefix, 0);
     CHECK_PTR(oid_ptr);
     
-    mib[mib_length].varbind.oid_ptr = oid_ptr;
+    object->varbind.oid_ptr = oid_ptr;
 
     /* set getter functions */
-    mib[mib_length].get_fnc_ptr = gfp;
+    object->get_fnc_ptr = gfp;
     /* set next oid function */
-    mib[mib_length].get_next_oid_fnc_ptr = gnofp;
+    object->get_next_oid_fnc_ptr = gnofp;
     /* set set value function */
-    mib[mib_length].set_fnc_ptr = svfp;
+    object->set_fnc_ptr = svfp;
 
     /* mark the entry in the MIB as a table */
-    mib[mib_length].varbind.value_type = BER_TYPE_NULL;
+    object->varbind.value_type = BER_TYPE_NULL;
 
-    mib_length++;
+    mib_add(object);
     return 0;
 }
 
@@ -295,58 +276,60 @@ s8t add_table(const OID_T* const prefix, get_value_t  gfp, get_next_oid_t gnofp,
 /*
  * Find an object in the MIB corresponding to the oid in the snmp-get request.
  */
-s8t mib_get(varbind_t* req)
+mib_object_t* mib_get(varbind_t* req)
 {
-    static u8t i;
-    for (i = 0; i < mib_length; i++) {
+    mib_object_t* ptr = mib_head;
+    while (ptr) {
         // scalar
-        if (mib[i].varbind.oid_ptr->len == req->oid_ptr->len &&
-                !oid_cmp(mib[i].varbind.oid_ptr, req->oid_ptr)) {
+        if (ptr->varbind.oid_ptr->len == req->oid_ptr->len &&
+                !oid_cmp(ptr->varbind.oid_ptr, req->oid_ptr)) {
             break;
-        } else if (mib[i].get_next_oid_fnc_ptr && mib[i].varbind.oid_ptr->len < req->oid_ptr->len &&
-                !oid_cmp(mib[i].varbind.oid_ptr, req->oid_ptr)) {
+        } else if (ptr->get_next_oid_fnc_ptr && ptr->varbind.oid_ptr->len < req->oid_ptr->len &&
+                !oid_cmp(ptr->varbind.oid_ptr, req->oid_ptr)) {
             // tabular
             break;
         }
+        ptr = ptr->next_ptr;
     }
 
-    if (i == mib_length) {
+
+    if (!ptr) {
         snmp_log("mib object not found\n");
-        return -1;
+        return 0;
     }
 
-    if (mib[i].get_fnc_ptr) {
-        if ((mib[i].get_fnc_ptr)(&mib[i], element_n(req->oid_ptr->first_ptr, mib[i].varbind.oid_ptr->len), req->oid_ptr->len - mib[i].varbind.oid_ptr->len) == -1) {
+    if (ptr->get_fnc_ptr) {
+        if ((ptr->get_fnc_ptr)(ptr, element_n(req->oid_ptr->first_ptr, ptr->varbind.oid_ptr->len), req->oid_ptr->len - ptr->varbind.oid_ptr->len) == -1) {
             snmp_log("can not get the value of the object\n");
-            return -1;
+            return 0;
         }
     }
 
     /* copy the value */
-    memcpy(&req->value, &mib[i].varbind.value, sizeof(varbind_value_t));
-    req->value_type = mib[i].varbind.value_type;
-    return i;
+    memcpy(&req->value, &ptr->varbind.value, sizeof(varbind_value_t));
+    req->value_type = ptr->varbind.value_type;
+    return ptr;
 }
 
 /*-----------------------------------------------------------------------------------*/
 /*
  * Find an object in the MIB that is the lexicographical successor of the given one.
  */
-s8t mib_get_next(varbind_t* req)
+mib_object_t* mib_get_next(varbind_t* req)
 {
-    static u8t i;
-    static s8t cmp;
-    for (i = 0; i < mib_length; i++) {
+    s8t cmp;
+    mib_object_t* ptr = mib_head;
+    while (ptr) {
         // find the object
-        cmp = oid_cmp(req->oid_ptr, mib[i].varbind.oid_ptr);
+        cmp = oid_cmp(req->oid_ptr, ptr->varbind.oid_ptr);
 
-        if (!mib[i].get_next_oid_fnc_ptr) {
+        if (!ptr->get_next_oid_fnc_ptr) {
             // handle scalar object
-            if (cmp == -1 || (cmp == 0 && req->oid_ptr->len < mib[i].varbind.oid_ptr->len)) {
+            if (cmp == -1 || (cmp == 0 && req->oid_ptr->len < ptr->varbind.oid_ptr->len)) {
                 /* free the request oid list */
                 oid_free(req->oid_ptr);
-                req->oid_ptr = oid_copy(mib[i].varbind.oid_ptr, 0);
-                CHECK_PTR(req->oid_ptr);
+                req->oid_ptr = oid_copy(ptr->varbind.oid_ptr, 0);
+                CHECK_PTR_U(req->oid_ptr);
                 break;
             }
         } else {
@@ -354,12 +337,12 @@ s8t mib_get_next(varbind_t* req)
             if (cmp == -1 || cmp == 0) {
                 /* oid of the first element */
                 oid_item_t* tail_ptr;
-                if ((tail_ptr = (mib[i].get_next_oid_fnc_ptr)(&mib[i], (cmp == -1 ? 0 : element_n(req->oid_ptr->first_ptr, mib[i].varbind.oid_ptr->len)),
-                        cmp == -1 ? 0 : req->oid_ptr->len - mib[i].varbind.oid_ptr->len)) != 0) {
+                if ((tail_ptr = (ptr->get_next_oid_fnc_ptr)(ptr, (cmp == -1 ? 0 : element_n(req->oid_ptr->first_ptr, ptr->varbind.oid_ptr->len)),
+                        cmp == -1 ? 0 : req->oid_ptr->len - ptr->varbind.oid_ptr->len)) != 0) {
                     /* copy the mib object's oid */
                     oid_item_t* last_ptr;
-                    oid_t* new_oid_ptr = oid_copy(mib[i].varbind.oid_ptr, &last_ptr);
-                    CHECK_PTR(new_oid_ptr);
+                    oid_t* new_oid_ptr = oid_copy(ptr->varbind.oid_ptr, &last_ptr);
+                    CHECK_PTR_U(new_oid_ptr);
                     /* attach the tail */
                     last_ptr->next_ptr = tail_ptr;
                     new_oid_ptr->len += oid_length(tail_ptr);
@@ -371,37 +354,38 @@ s8t mib_get_next(varbind_t* req)
                 }
             }
         }
+        ptr = ptr->next_ptr;
     }
 
-    if (i == mib_length) {
+    if (!ptr) {
         snmp_log("mib does not contain next object\n");
-        return -1;
+        return 0;
     }
 
-    if (mib[i].get_fnc_ptr) {
-        if ((mib[i].get_fnc_ptr)(&mib[i], element_n(req->oid_ptr->first_ptr, mib[i].varbind.oid_ptr->len),
-                                    req->oid_ptr->len - mib[i].varbind.oid_ptr->len) == -1) {
+    if (ptr->get_fnc_ptr) {
+        if ((ptr->get_fnc_ptr)(ptr, element_n(req->oid_ptr->first_ptr, ptr->varbind.oid_ptr->len),
+                                    req->oid_ptr->len - ptr->varbind.oid_ptr->len) == -1) {
             snmp_log("can not get the value of the object\n");
-            return -1;
+            return 0;
         }
     }
 
     /* copy the value */
-    memcpy(&req->value, &mib[i].varbind.value, sizeof(varbind_value_t));
-    req->value_type = mib[i].varbind.value_type;
-    return i;
+    memcpy(&req->value, &ptr->varbind.value, sizeof(varbind_value_t));
+    req->value_type = ptr->varbind.value_type;
+    return ptr;
 }
 
 /*-----------------------------------------------------------------------------------*/
 /*
  * Set the value for an object in the MIB.
  */
-s8t mib_set(u8t index, varbind_t* req)
+s8t mib_set(mib_object_t* object, varbind_t* req)
 {
-    if (mib[index].set_fnc_ptr) {
-        if ((mib[index].set_fnc_ptr)(&mib[index], 
-                element_n(req->oid_ptr->first_ptr, mib[index].varbind.oid_ptr->len),
-                req->oid_ptr->len - mib[index].varbind.oid_ptr->len, req->value) == -1) {
+    if (object->set_fnc_ptr) {
+        if ((object->set_fnc_ptr)(object,
+                element_n(req->oid_ptr->first_ptr, object->varbind.oid_ptr->len),
+                req->oid_ptr->len - object->varbind.oid_ptr->len, req->value) == -1) {
             snmp_log("can not set the value of the object\n");
             return -1;
         }
@@ -409,26 +393,26 @@ s8t mib_set(u8t index, varbind_t* req)
         switch (req->value_type) {
             case BER_TYPE_IPADDRESS:
             case BER_TYPE_OCTET_STRING:
-                if (mib[index].varbind.value.s_value.ptr) {
-                    free(mib[index].varbind.value.s_value.ptr);
+                if (object->varbind.value.s_value.ptr) {
+                    free(object->varbind.value.s_value.ptr);
                 }
-                mib[index].varbind.value.s_value.len = req->value.s_value.len;
-                mib[index].varbind.value.s_value.ptr = (u8t*)malloc(req->value.s_value.len);
-                if (!mib[index].varbind.value.s_value.ptr) {
+                object->varbind.value.s_value.len = req->value.s_value.len;
+                object->varbind.value.s_value.ptr = (u8t*)malloc(req->value.s_value.len);
+                if (!object->varbind.value.s_value.ptr) {
                     snmp_log("can not allocate memory for a string\n");
                     return -1;
                 }
-                memcpy(mib[index].varbind.value.s_value.ptr, req->value.s_value.ptr, mib[index].varbind.value.s_value.len);
+                memcpy(object->varbind.value.s_value.ptr, req->value.s_value.ptr, object->varbind.value.s_value.len);
                 break;
 
             case BER_TYPE_INTEGER:
-                mib[index].varbind.value.i_value = req->value.i_value;
+                object->varbind.value.i_value = req->value.i_value;
                 break;
 
             case BER_TYPE_COUNTER:
             case BER_TYPE_TIME_TICKS:
             case BER_TYPE_GAUGE:
-                mib[index].varbind.value.u_value = req->value.u_value;
+                object->varbind.value.u_value = req->value.u_value;
                 break;
 
             case BER_TYPE_OPAQUE:

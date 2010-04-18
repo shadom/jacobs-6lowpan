@@ -1,20 +1,20 @@
 * INITIAL memory usage - without SNMP
 
-AVR Memory Usage
-----------------
-Device: Unknown
-
-Program:   51332 bytes
+Program:   51326 bytes
 (.text + .data + .bootloader)
 
-Data:      10263 bytes
+Data:      10257 bytes
 (.data + .bss + .noinit)
 
 EEPROM:       54 bytes
 (.eeprom)
 
 
+================================================================
 * CURRENT USAGE (without 800 bytes of response)
+
+ROM = ~10200
+RAM = ~300
 
 Program:   61512 bytes
 (.text + .data + .bootloader)
@@ -25,11 +25,15 @@ Data:      10564 bytes
 EEPROM:       54 bytes
 (.eeprom
 
-
+================================================================
 * BER.C 
 
 ROM = 5860
 RAM = 145
+
+~ 100 byte can be saved by changing the logic in the snmp-protocol = don't save the returning value from the decode request;
+~ 30 usage of static variables;
+
 
 Device: Unknown
 
@@ -41,3 +45,40 @@ Data:      10419 bytes
 
 EEPROM:       54 bytes
 (.eeprom)
+3
+
+================================================================
+* MIB.C
+
+ROM = 2360
+RAM = 125
+
+~ 45 - custom functions + get, getnext, set (!!!! should be ----)
+~ 70 - oid consts; (!!! should be ---)
+~ 20 - string const and other consts (!!!! should be -----);
+
+Program:   53292 bytes
+(.text + .data + .bootloader)
+
+Data:      10294 bytes
+(.data + .bss + .noinit)
+
+EEPROM:       54 bytes
+(.eeprom)
+
+================================================================
+* SNMP-PROTOCOL.C
+
+RAM =  33
+
+~ message_t and others !!!! -10
+
+Program:   51740 bytes
+(.text + .data + .bootloader)
+
+Data:      10261 bytes
+(.data + .bss + .noinit)
+
+EEPROM:       54 bytes
+(.eeprom)
+

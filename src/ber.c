@@ -360,8 +360,8 @@ s8t ber_decode_value(const u8t* const input, const u16t len, u16t* pos, u8t* val
  */
 s8t ber_decode_pdu(const u8t* const input, const u16t len, u16t* pos, pdu_t* pdu) {
     /* request PDU */
-    static u16t length;
-    static s32t tmp;
+    u16t length;
+    s32t tmp;
 
     /* pdu type */
     TRY(ber_decode_type_length(input, len, pos, &pdu->request_type, &length));
@@ -424,8 +424,8 @@ s8t ber_decode_pdu(const u8t* const input, const u16t len, u16t* pos, pdu_t* pdu
  */
 s8t ber_decode_request(const u8t* const input, const u16t len, message_t* request)
 {
-    static u16t pos, length;
-    static s32t tmp;
+    u16t pos, length;
+    s32t tmp;
 
     pos = 0;
 
@@ -504,10 +504,10 @@ s8t ber_encode_type_length(u8t* output, s16t* pos, u8t type, u16t len)
  */
 s8t ber_encode_oid(u8t* output, s16t* pos, oid_t* const  oid)
 {
-    static u8t length;
-    static u8t i;
-    static s8t j;
-    static u16t oid_length;
+    u8t length;
+    u8t i;
+    s8t j;
+    u16t oid_length;
     /* reverse order, since we encode from the end */
     oid->first_ptr = oid_item_list_reverse(oid->first_ptr);
     oid_length = 1;

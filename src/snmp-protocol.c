@@ -38,7 +38,7 @@ static s8t snmp_get(message_t* message)
     varbind_t* ptr = message->pdu.varbind_first_ptr;
     while (ptr) {
         i++;
-        if (mib_get(ptr) == -1) {
+        if (!mib_get(ptr)) {
             message->pdu.error_status = ERROR_STATUS_NO_SUCH_NAME;
             message->pdu.error_index = i;
             break;
@@ -58,7 +58,7 @@ static s8t snmp_get_next(message_t* message)
     varbind_t* ptr = message->pdu.varbind_first_ptr;
     while (ptr) {
         i++;
-        if (mib_get_next(ptr) == -1) {
+        if (!mib_get_next(ptr)) {
             message->pdu.error_status = ERROR_STATUS_NO_SUCH_NAME;
             message->pdu.error_index = i;
             break;
@@ -76,23 +76,24 @@ static s8t snmp_get_next(message_t* message)
 static s8t snmp_set(message_t* message)
 {
     varbind_t tmp_var_bind;
-    u8t_list_t *var_index_ptr, *cur_ptr;
+    mib_object_list_t *var_index_ptr = 0, *cur_ptr = 0;
 
     varbind_t* ptr = message->pdu.varbind_first_ptr;
-    int i = 0, index;
+    u8t i = 0;
+    mib_object_t* object;
     /* find mib objects and check their types */
     while (ptr) {
         i++;
         memcpy(&tmp_var_bind, ptr, sizeof(varbind_t));
-        if ((index = mib_get(&tmp_var_bind)) == -1) {
+        if (!(object = mib_get(&tmp_var_bind))) {
             message->pdu.error_status = ERROR_STATUS_NO_SUCH_NAME;
             message->pdu.error_index = i;
             break;
         } else {
-            if (i == 1) {
-                cur_ptr = var_index_ptr = u8t_list_append(0, index);
+            if (!var_index_ptr) {
+                cur_ptr = var_index_ptr = mib_object_list_append(0, object);
             } else {
-                cur_ptr = u8t_list_append(cur_ptr, index);
+                cur_ptr = mib_object_list_append(cur_ptr, object);
             }
         }
         if (tmp_var_bind.value_type != ptr->value_type) {
@@ -114,14 +115,14 @@ static s8t snmp_set(message_t* message)
             if (mib_set(cur_ptr->value, ptr) == -1) {
                 message->pdu.error_status = ERROR_STATUS_GEN_ERR;
                 message->pdu.error_index = i;
-                u8t_list_free(var_index_ptr);
+                mib_object_list_free(var_index_ptr);
                 return -1;
             }
             ptr = ptr->next_ptr;
             cur_ptr = cur_ptr->next_ptr;
         }
     }
-    u8t_list_free(var_index_ptr);
+    mib_object_list_free(var_index_ptr);
     return 0;
 }
 
@@ -151,7 +152,7 @@ void free_message(message_t* message) {
  */
 s8t snmp_handler(const u8t* const input,  const u16t input_len, u8t* output, u16t* output_len, const u16t max_output_len)
 {
-    static message_t message;
+    message_t message;
     memset(&message, 0, sizeof(message_t));
     /* parse the incoming datagram and build an ASN.1 object */
     s8t ret = ber_decode_request(input, input_len, &message);

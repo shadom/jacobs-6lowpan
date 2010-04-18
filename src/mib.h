@@ -24,11 +24,41 @@
 
 #include "snmp.h"
 
+typedef struct mib_object_t mib_object_t;
+
+/*
+ *  Function types to treat tabular structures
+ */
+typedef s8t (*get_value_t)(mib_object_t* object, oid_item_t* oid_item, u8t len);
+typedef oid_item_t* (*get_next_oid_t)(mib_object_t* object, oid_item_t* oid_item, u8t len);
+typedef s8t (*set_value_t)(mib_object_t* object, oid_item_t* oid_item, u8t len, varbind_value_t value);
+
+typedef struct mib_object_t
+{
+    varbind_t varbind;
+
+    /* A pointer to the get value function.
+     */
+    get_value_t get_fnc_ptr;
+
+    /* A pointer to the get next oid function.
+     * If set then the object is tabular.
+     */
+    get_next_oid_t get_next_oid_fnc_ptr;
+
+    /* A pointer to the get value function.
+     */
+    set_value_t set_fnc_ptr;
+
+    struct mib_object_t* next_ptr;
+
+} mib_object_type;
+
 s8t mib_init();
 
-s8t mib_get(varbind_t* req);
+mib_object_t* mib_get(varbind_t* req);
 
-s8t mib_get_next(varbind_t* req);
+mib_object_t* mib_get_next(varbind_t* req);
 
-s8t mib_set(u8t index, varbind_t* req);
+s8t mib_set(mib_object_t* object, varbind_t* req);
 #endif /* __MIB_H__ */
