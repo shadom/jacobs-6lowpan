@@ -32,7 +32,7 @@
 
 #define TRY(c) if (c < 0) { snmp_log("exception line: %d\n", __LINE__); return c; }
 
-#define CHECK_PTR(ptr) if (!ptr) { snmp_log("can not allocate memory, line: %d\n", __LINE__); return ERR_MEMORY_ALLOCATION; }
+#define CHECK_PTR_MA(ptr) if (!ptr) { snmp_log("can not allocate memory, line: %d\n", __LINE__); return ERR_MEMORY_ALLOCATION; }
 
 /** \brief ber encoded value. */
 typedef struct {
@@ -42,13 +42,6 @@ typedef struct {
 
 /** \brief NULL value of the variable binding. */
 static const ber_value_t ber_void_null = {(u8t*)"\x05\x00", 2};
-
-/* static variables shared between functions to save memory. */
-static u16t s_length;
-
-static u8t s_type;
-
-static s8t s_ret;
 
 /*-----------------------------------------------------------------------------------*/
 /*
@@ -152,9 +145,11 @@ s8t ber_decode_type_length(const u8t* const input, const u16t len, u16t* pos, u8
  */
 s8t ber_decode_sequence(const u8t* const input, const u16t len, u16t* pos, u8t is_last)
 {
-    TRY(ber_decode_type_length(input, len, pos, &s_type, &s_length));
-    if (s_type != BER_TYPE_SEQUENCE || (is_last && s_length != (len - *pos))) {
-        snmp_log("bad type or length value for an expected sequence: type %02X length %d\n", s_type, s_length);
+    u8t type;
+    u16t length;
+    TRY(ber_decode_type_length(input, len, pos, &type, &length));
+    if (type != BER_TYPE_SEQUENCE || (is_last && length != (len - *pos))) {
+        snmp_log("bad type or length value for an expected sequence: type %02X length %d\n", type, length);
         return -1;
     }
     return 0;
@@ -166,17 +161,19 @@ s8t ber_decode_sequence(const u8t* const input, const u16t len, u16t* pos, u8t i
  */
 s8t ber_decode_integer(const u8t* const input, const u16t len, u16t* pos, s32t* value)
 {
+    u8t type;
+    u16t length;
     /* type and length */
-    TRY(ber_decode_type_length(input, len, pos, &s_type, &s_length));
-    if (s_type != BER_TYPE_INTEGER || s_length < 1) {
-        snmp_log("bad type or length value for an expected integer: type %02X length %d\n", s_type, s_length);
+    TRY(ber_decode_type_length(input, len, pos, &type, &length));
+    if (type != BER_TYPE_INTEGER || length < 1) {
+        snmp_log("bad type or length value for an expected integer: type %02X length %d\n", type, length);
         return -1;
     }
 
     /* value */
-    if (*pos + s_length - 1 < len) {
+    if (*pos + length - 1 < len) {
         memset(value, (input[*pos] & 0x80) ? 0xFF : 0x00, sizeof (*value));
-        while ((s_length)--) {
+        while ((length)--) {
             *value = (*value << 8) + input[*pos];
             *pos = *pos + 1;
         }
@@ -193,17 +190,19 @@ s8t ber_decode_integer(const u8t* const input, const u16t len, u16t* pos, s32t* 
  */
 s8t ber_decode_unsigned_integer(const u8t* const input, const u16t len, u16t* pos, u32t* value)
 {
+    u8t type;
+    u16t length;
     /* type and length */
-    TRY(ber_decode_type_length(input, len, pos, &s_type, &s_length));
-    if (s_type != BER_TYPE_GAUGE || s_length < 1) {
-        snmp_log("bad type or length value for an expected integer: type %02X length %d\n", s_type, s_length);
+    TRY(ber_decode_type_length(input, len, pos, &type, &length));
+    if (type != BER_TYPE_GAUGE || length < 1) {
+        snmp_log("bad type or length value for an expected integer: type %02X length %d\n", type, length);
         return -1;
     }
 
     /* type */
-    if (*pos + s_length - 1 < len) {
+    if (*pos + length - 1 < len) {
         *value = 0;
-        while (s_length--) {
+        while (length--) {
             *value = (*value << 8) | input[*pos];
             *pos = *pos + 1;
         }
@@ -221,14 +220,15 @@ s8t ber_decode_unsigned_integer(const u8t* const input, const u16t len, u16t* po
  */
 s8t ber_decode_string(const u8t* const input, const u16t len, u16t* pos, u8t** value, u16t* field_len)
 {
-    TRY(ber_decode_type_length(input, len, pos, &s_type, field_len));
-    if (s_type != BER_TYPE_OCTET_STRING) {
-        snmp_log("SNMP string must be of type %02X, byt not %02X\n", BER_TYPE_OCTET_STRING, s_type);
+    u8t type;
+    TRY(ber_decode_type_length(input, len, pos, &type, field_len));
+    if (type != BER_TYPE_OCTET_STRING) {
+        snmp_log("SNMP string must be of type %02X, byt not %02X\n", BER_TYPE_OCTET_STRING, type);
         return -1;
     }
     if (*pos + *field_len - 1 < len) {
         *value = (u8t*)malloc(*field_len + 1);
-        CHECK_PTR(*value);
+        CHECK_PTR_MA(*value);
         memcpy(*value, &input[*pos], *field_len);
         (*value)[*field_len] = 0;
         *pos = *pos + *field_len;
@@ -245,9 +245,11 @@ s8t ber_decode_string(const u8t* const input, const u16t len, u16t* pos, u8t** v
  */
 s8t ber_decode_oid(const u8t* const input, const u16t len, u16t* pos, oid_t* o)
 {
-    TRY(ber_decode_type_length(input, len, pos, &s_type, &s_length));
-    if (s_type != BER_TYPE_OID || s_length < 1) {
-        snmp_log("bad type or length of the OID: type %02X length %d\n", s_type, s_length);
+    u8t type;
+    u16t length;
+    TRY(ber_decode_type_length(input, len, pos, &type, &length));
+    if (type != BER_TYPE_OID || length < 1) {
+        snmp_log("bad type or length of the OID: type %02X length %d\n", type, length);
         return -1;
     }
 
@@ -259,26 +261,26 @@ s8t ber_decode_oid(const u8t* const input, const u16t len, u16t* pos, oid_t* o)
          */
         if (!(input[*pos] & 0x80)) {
             o->first_ptr = oid_item_list_append(0, input[*pos] / 40);
-            CHECK_PTR(o->first_ptr);
+            CHECK_PTR_MA(o->first_ptr);
             prev_ptr = oid_item_list_append(o->first_ptr, input[*pos] % 40);
             o->len = 2;
             *pos = *pos + 1;
-            (s_length)--;
+            (length)--;
         } else {
             snmp_log("first bit of the oid must not be set\n");
             return -1;
         }
 
-        while (s_length) {
+        while (length) {
             cur_ptr = oid_item_list_append(prev_ptr, 0);
             o->len++;
-            while ((s_length)--) {
+            while ((length)--) {
                 /* Check bit 8 to see of there are more octets that make up this element of the OID.
                  * If bit 8 is set, then multiply the octet by 128 and then add the lower bits to the result.
                  */
                 cur_ptr->value = (cur_ptr->value << 7) + (input[*pos] & 0x7F);
                 if (input[*pos] & 0x80) {
-                    if ((s_length) == 0) {
+                    if ((length) == 0) {
                         snmp_log("can't fetch an oid: unexpected end of the SNMP input\n");
                         return -1;
                     }
@@ -303,13 +305,15 @@ s8t ber_decode_oid(const u8t* const input, const u16t len, u16t* pos, oid_t* o)
  */
 s8t ber_decode_void(const u8t* const input, const u16t len, u16t* pos)
 {
-    TRY(ber_decode_type_length(input, len, pos, &s_type, &s_length));
-    if ((s_type == BER_TYPE_NULL && s_length != 0) || (s_type != BER_TYPE_NULL && s_length == 0)) {
-        snmp_log("bad type of length of a void value: type %02X length %d\n", s_type, s_length);
+    u8t type;
+    u16t length;
+    TRY(ber_decode_type_length(input, len, pos, &type, &length));
+    if ((type == BER_TYPE_NULL && length != 0) || (type != BER_TYPE_NULL && length == 0)) {
+        snmp_log("bad type of length of a void value: type %02X length %d\n", type, length);
         return -1;
     }
-    if (*pos + s_length - 1 < len) {
-        *pos = *pos + s_length;
+    if (*pos + length - 1 < len) {
+        *pos = *pos + length;
     } else {
         snmp_log("can't fetch void: unexpected end of the SNMP request\n");
         return -1;
@@ -453,8 +457,8 @@ s8t ber_decode_request(const u8t* const input, const u16t len, message_t* reques
     snmp_log("community string: %s\n", request->community);
 
     /* PDU encoding */
-    s_ret = ber_decode_pdu(input, len, &pos, &request->pdu);
-    TRY(s_ret);
+    s8t ret = ber_decode_pdu(input, len, &pos, &request->pdu);
+    TRY(ret);
 
     snmp_log("parsing finished: OK\n");
 

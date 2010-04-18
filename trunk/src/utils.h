@@ -35,6 +35,9 @@
 #define min(a,b) ((a>b) ? b : a)
 #define max(a,b) ((a>b) ? a : b)
 
+#define CHECK_PTR(ptr) if (!ptr) { snmp_log("can not allocate memory, line: %d\n", __LINE__); return -1; }
+#define CHECK_PTR_U(ptr) if (!ptr) { snmp_log("can not allocate memory, line: %d\n", __LINE__); return 0; }
+
 s8t oid_cmp(oid_t* oid1, oid_t* oid2);
 
 typedef struct mib_object_list_t

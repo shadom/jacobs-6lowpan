@@ -29,12 +29,12 @@
 #include "snmpd.h"
 #include "snmpd-conf.h"
 #include "snmp-protocol.h"
-#include "mib.h"
+#include "mib-init.h"
 #include "logging.h"
 
 #define UDP_IP_BUF   ((struct uip_udpip_hdr *)&uip_buf[UIP_LLH_LEN])
 
-/* UDP connection*/
+/* UDP connection */
 static struct uip_udp_conn *udpconn;
 
 PROCESS(snmpd_process, "SNMP daemon process");
@@ -45,12 +45,12 @@ PROCESS(snmpd_process, "SNMP daemon process");
  */
 static void udp_handler(process_event_t ev, process_data_t data)
 {
-    static u8t respond[MAX_BUF_SIZE];
-    static u16t resp_len;
+    u8t respond[MAX_BUF_SIZE];
+    u16t resp_len;
     
     #if DEBUG && CONTIKI_TARGET_AVR_RAVEN
-    static u8t request[MAX_BUF_SIZE];
-    static u16t req_len;
+    u8t request[MAX_BUF_SIZE];
+    u16t req_len;
     #endif /* DEBUG && CONTIKI_TARGET_AVR_RAVEN */
     if (ev == tcpip_event && uip_newdata()) {
         uip_ipaddr_copy(&udpconn->ripaddr, &UDP_IP_BUF->srcipaddr);
