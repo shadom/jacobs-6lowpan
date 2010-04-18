@@ -54,11 +54,14 @@ typedef struct mib_object_t
 
 } mib_object_type;
 
-s8t mib_init();
+s8t add_scalar(const OID_T* const prefix, const OID_T object_id, u8t value_type, const void* const value, get_value_t gfp, set_value_t svfp);
+
+s8t add_table(const OID_T* const prefix, get_value_t  gfp, get_next_oid_t gnofp, set_value_t svfp);
 
 mib_object_t* mib_get(varbind_t* req);
 
 mib_object_t* mib_get_next(varbind_t* req);
 
 s8t mib_set(mib_object_t* object, varbind_t* req);
+
 #endif /* __MIB_H__ */
